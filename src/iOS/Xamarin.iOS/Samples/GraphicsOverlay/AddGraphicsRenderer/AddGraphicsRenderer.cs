@@ -1,10 +1,10 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2019 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using Esri.ArcGISRuntime.Geometry;
@@ -13,114 +13,107 @@ using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
+using System.Drawing;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.AddGraphicsRenderer
+namespace ArcGISRuntime.Samples.AddGraphicsRenderer
 {
     [Register("AddGraphicsRenderer")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Add graphics with renderer",
+        category: "GraphicsOverlay",
+        description: "A renderer allows you to change the style of all graphics in a graphics overlay by referencing a single symbol style.",
+        instructions: "Run the sample and view graphics for points, lines, and polygons, which are stylized using renderers.",
+        tags: new[] { "GraphicsOverlay", "SimpleMarkerSymbol", "SimpleRenderer" })]
     public class AddGraphicsRenderer : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public AddGraphicsRenderer()
         {
             Title = "Add graphics (Renderer)";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-        }
-
         private void Initialize()
         {
-            // Create a map with 'Imagery with Labels' basemap and an initial location
-            Map myMap = new Map(BasemapType.ImageryWithLabels, 34.056295, -117.195800, 14);
+            // Create a map with 'Imagery with Labels' basemap.
+            Map myMap = new Map(Basemap.CreateImageryWithLabels());
 
-            // Create graphics when MapView's viewpoint is initialized
-            _myMapView.ViewpointChanged += OnViewpointChanged;
-
-            // Assign the map to the MapView
+            // Assign the map to the MapView.
             _myMapView.Map = myMap;
-        }
 
-        private void OnViewpointChanged(object sender, EventArgs e)
-        {
-            // Unhook the event
-            _myMapView.ViewpointChanged -= OnViewpointChanged;
+            // Create a center point for the graphics.
+            MapPoint centerPoint = new MapPoint(-117.195800, 34.056295, SpatialReferences.Wgs84);
 
-            // Get area that is shown in a MapView
-            Polygon visibleArea = _myMapView.VisibleArea;
-   
-            // Get extent of that area
-            Envelope extent = visibleArea.Extent;
-            
-            // Get central point of the extent
-            MapPoint centerPoint = extent.GetCenter();
+            // Create an envelope from that center point.
+            Envelope pointExtent = new Envelope(centerPoint, .07, .035);
 
-            // Create values inside the visible extent for creating graphic
-            var extentWidth = extent.Width / 5;
-            var extentHeight = extent.Height / 10;
+            // Create a collection of points on the corners of the envelope.
+            PointCollection points = new PointCollection(SpatialReferences.Wgs84)
+            {
+                new MapPoint(pointExtent.XMax, pointExtent.YMax),
+                new MapPoint(pointExtent.XMax, pointExtent.YMin),
+                new MapPoint(pointExtent.XMin, pointExtent.YMax),
+                new MapPoint(pointExtent.XMin, pointExtent.YMin),
+            };
 
-            // Create point collection
-            PointCollection points = new PointCollection(SpatialReferences.WebMercator)
-                {
-                    new MapPoint(centerPoint.X - extentWidth * 2, centerPoint.Y - extentHeight * 2),
-                    new MapPoint(centerPoint.X - extentWidth * 2, centerPoint.Y + extentHeight * 2),
-                    new MapPoint(centerPoint.X + extentWidth * 2, centerPoint.Y + extentHeight * 2),
-                    new MapPoint(centerPoint.X + extentWidth * 2, centerPoint.Y - extentHeight * 2)
-                };
-
-            // Create overlay to where graphics are shown
+            // Create overlay to where graphics are shown.
             GraphicsOverlay overlay = new GraphicsOverlay();
 
-            // Add points to the graphics overlay
-            foreach (var point in points)
+            // Add points to the graphics overlay.
+            foreach (MapPoint point in points)
             {
-                // Create new graphic and add it to the overlay
+                // Create new graphic and add it to the overlay.
                 overlay.Graphics.Add(new Graphic(point));
             }
 
-            // Create symbol for points
+            // Create symbol for points.
             SimpleMarkerSymbol pointSymbol = new SimpleMarkerSymbol()
             {
-                Color = System.Drawing.Color.Yellow,
+                Color = Color.Yellow,
                 Size = 30,
-                Style = SimpleMarkerSymbolStyle.Square,
+                Style = SimpleMarkerSymbolStyle.Square
             };
 
-            // Create simple renderer with symbol
+            // Create simple renderer with symbol.
             SimpleRenderer renderer = new SimpleRenderer(pointSymbol);
 
-            // Set renderer to graphics overlay
+            // Set renderer to graphics overlay.
             overlay.Renderer = renderer;
 
-            // Make sure that the UI changes are done in the UI thread
-            InvokeOnMainThread(() =>
-            {
-                // Add created overlay to the MapView
-                _myMapView.GraphicsOverlays.Add(overlay);
-            });
+            // Add created overlay to the MapView.
+            _myMapView.GraphicsOverlays.Add(overlay);
+
+            // Center the MapView on the points.
+            _myMapView.SetViewpointGeometryAsync(pointExtent, 50);
         }
 
-        private void CreateLayout()
+        public override void ViewDidLoad()
         {
-            // Add MapView to the page
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,15 +13,20 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableNoCache
+namespace ArcGISRuntime.Samples.ServiceFeatureTableNoCache
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Service feature table (no cache)",
+        category: "Data",
+        description: "Display a feature layer from a service using the **no cache** feature request mode.",
+        instructions: "Run the sample and pan and zoom around the map. With each interaction, new features will be requested from the service and displayed on the map.",
+        tags: new[] { "cache", "feature request mode", "performance" })]
     public partial class ServiceFeatureTableNoCache : ContentPage
     {
         public ServiceFeatureTableNoCache()
         {
             InitializeComponent ();
 
-            Title = "Service feature table (no cache)";
             // Create the UI, setup the control references and execute initialization 
             Initialize();
         }
@@ -38,14 +43,16 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableNoCache
             myMap.InitialViewpoint = new Viewpoint(initialLocation);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/PoolPermits/FeatureServer/0");
 
             // Create feature table for the pools feature service
-            ServiceFeatureTable poolsFeatureTable = new ServiceFeatureTable(serviceUri);
+            ServiceFeatureTable poolsFeatureTable = new ServiceFeatureTable(serviceUri)
+            {
 
-            // Define the request mode
-            poolsFeatureTable.FeatureRequestMode = FeatureRequestMode.OnInteractionNoCache;
+                // Define the request mode
+                FeatureRequestMode = FeatureRequestMode.OnInteractionNoCache
+            };
 
             // Create FeatureLayer that uses the created table
             FeatureLayer poolsFeatureLayer = new FeatureLayer(poolsFeatureTable);

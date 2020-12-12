@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,8 +13,14 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
+namespace ArcGISRuntime.Samples.TimeBasedQuery
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Time-based query",
+        category: "Layers",
+        description: "Query data using a time extent. ",
+        instructions: "Run the sample, and a subset of records will be displayed on the map.",
+        tags: new[] { "query", "time", "time extent" })]
     public partial class TimeBasedQuery : ContentPage
     {
         // Hold a URI pointing to the feature service
@@ -27,8 +33,6 @@ namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
         {
             InitializeComponent();
 
-            Title = "Time-based query";
-
             Initialize();
         }
 
@@ -38,10 +42,12 @@ namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
             Map myMap = new Map(Basemap.CreateOceans());
 
             // Create feature table for the hurricane feature service
-            _myFeatureTable = new ServiceFeatureTable(_serviceUri);
+            _myFeatureTable = new ServiceFeatureTable(_serviceUri)
+            {
 
-            // Define the request mode
-            _myFeatureTable.FeatureRequestMode = FeatureRequestMode.ManualCache;
+                // Define the request mode
+                FeatureRequestMode = FeatureRequestMode.ManualCache
+            };
 
             // When feature table is loaded, populate data
             _myFeatureTable.LoadStatusChanged += OnLoadedPopulateData;
@@ -74,10 +80,17 @@ namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
             queryParameters.TimeExtent = myExtent;
 
             // Create list of the fields that are returned from the service
-            var outputFields = new string[] { "*" };
+            string[] outputFields = { "*" };
 
-            // Populate feature table with the data based on query
-            await _myFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            try
+            {
+                // Populate feature table with the data based on query
+                await _myFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }
     }
 }

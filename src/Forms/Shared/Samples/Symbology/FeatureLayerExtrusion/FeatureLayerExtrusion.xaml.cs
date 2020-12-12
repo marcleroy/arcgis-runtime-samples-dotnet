@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,22 +14,21 @@ using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
+namespace ArcGISRuntime.Samples.FeatureLayerExtrusion
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer extrusion",
+        category: "Symbology",
+        description: "Extrude features based on their attributes.",
+        instructions: "Press the button to switch between using population density and total population for extrusion. Higher extrusion directly corresponds to higher attribute values.",
+        tags: new[] { "3D", "extrude", "extrusion", "extrusion expression", "height", "renderer", "scene" })]
     public partial class FeatureLayerExtrusion : ContentPage
     {
         public FeatureLayerExtrusion()
         {
             InitializeComponent ();
-
-            Title = "Feature layer extrusion";
 
             Initialize();
         }
@@ -39,16 +38,18 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             try
             {
                 // Define the Uri for the service feature table (US state polygons)
-                var myServiceFeatureTable_Uri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
+                Uri myServiceFeatureTable_Uri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
 
                 // Create a new service feature table from the Uri
                 ServiceFeatureTable myServiceFeatureTable = new ServiceFeatureTable(myServiceFeatureTable_Uri);
 
                 // Create a new feature layer from the service feature table
-                FeatureLayer myFeatureLayer = new FeatureLayer(myServiceFeatureTable);
+                FeatureLayer myFeatureLayer = new FeatureLayer(myServiceFeatureTable)
+                {
 
-                // Set the rendering mode of the feature layer to be dynamic (needed for extrusion to work)
-                myFeatureLayer.RenderingMode = FeatureRenderingMode.Dynamic;
+                    // Set the rendering mode of the feature layer to be dynamic (needed for extrusion to work)
+                    RenderingMode = FeatureRenderingMode.Dynamic
+                };
 
                 // Create a new simple line symbol for the feature layer
                 SimpleLineSymbol mySimpleLineSymbol = new SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Colors.Black, 1);
@@ -62,8 +63,8 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
                 // Get the scene properties from the simple renderer
                 RendererSceneProperties myRendererSceneProperties = mySimpleRenderer.SceneProperties;
 
-                // Set the extrusion mode for the scene properties to be base height
-                myRendererSceneProperties.ExtrusionMode = ExtrusionMode.BaseHeight;
+                // Set the extrusion mode for the scene properties
+                myRendererSceneProperties.ExtrusionMode = ExtrusionMode.AbsoluteHeight;
 
                 // Set the initial extrusion expression
                 myRendererSceneProperties.ExtrusionExpression = "[POP2007] / 10";
@@ -92,8 +93,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             catch (Exception ex)
             {
                 // Something went wrong, display the error
-                //MessageBox.Show(ex.ToString());
-                await DisplayAlert("Error",ex.ToString(), "OK");
+                await Application.Current.MainPage.DisplayAlert("Error",ex.ToString(), "OK");
             }
         }
 
@@ -109,19 +109,21 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             RendererSceneProperties myRendererSceneProperties = myRenderer.SceneProperties;
 
             // Toggle the feature layer's scene properties renderer extrusion expression and change the button text
-            if (Button_ToggleExtrusionData.Text == "Population Density")
+            if (ToggleExtrusionDataButton.Text == "Show population density")
             {
-                myRendererSceneProperties.ExtrusionExpression = "[POP07_SQMI] * 5000";
-                Button_ToggleExtrusionData.Text = "Total Population";
+                // An offset of 100000 is added to ensure that polygons for large areas (like Alaska)
+                // with low populations will be extruded above the curvature of the Earth.
+                myRendererSceneProperties.ExtrusionExpression = "[POP07_SQMI] * 5000 + 100000";
+                ToggleExtrusionDataButton.Text = "Show total population";
             }
-            else if (Button_ToggleExtrusionData.Text == "Total Population")
+            else if (ToggleExtrusionDataButton.Text == "Show total population")
             {
                 myRendererSceneProperties.ExtrusionExpression = "[POP2007] / 10";
-                Button_ToggleExtrusionData.Text = "Population Density";
+                ToggleExtrusionDataButton.Text = "Show population density";
             }
         }
 
-        private void Button_ToggleExtrusionData_Click(object sender, EventArgs e)
+        private void ToggleExtrusionData_Click(object sender, EventArgs e)
         {
             // Call the function to change the feature layer's renderer scene properties extrusion expression
             ChangeExtrusionExpression();

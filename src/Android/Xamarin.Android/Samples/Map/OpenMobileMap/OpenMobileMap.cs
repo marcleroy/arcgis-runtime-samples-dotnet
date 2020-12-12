@@ -10,15 +10,22 @@
 using Android.App;
 using Android.OS;
 using Android.Widget;
-using ArcGISRuntimeXamarin.Managers;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
-using System.IO;
+using System;
 using System.Linq;
 
-namespace ArcGISRuntimeXamarin.Samples.OpenMobileMap
+namespace ArcGISRuntime.Samples.OpenMobileMap
 {
-    [Activity]
+    [Activity(ConfigurationChanges = Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("e1f3a7254cb845b09450f54937c16061")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Open mobile map package",
+        category: "Map",
+        description: "Display a map from a mobile map package.",
+        instructions: "When the sample opens, it will automatically display the map in the mobile map package. Pan and zoom to observe the data from the mobile map package.",
+        tags: new[] { "mmpk", "mobile map package", "offline" })]
     public class OpenMobileMap : Activity
     {
         private MapView _myMapView;
@@ -29,60 +36,51 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMobileMap
 
             Title = "Open mobile map (map package)";
 
-            // Create the UI, setup the control references and execute initialization
             CreateLayout();
             Initialize();
         }
 
         private async void Initialize()
         {
-            // Get the path to the mobile map package
+            // Get the path to the mobile map package.
             string filepath = GetMmpkPath();
 
-            // Open the map package
-            MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
-
-            // Check that there is at least one map
-            if (myMapPackage.Maps.Count > 0)
+            try
             {
-                // Display the first map in the package
+                // Open the map package.
+                MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
+
+                // Load the package.
+                await myMapPackage.LoadAsync();
+
+                // Display the first map in the package.
                 _myMapView.Map = myMapPackage.Maps.First();
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
             }
         }
 
         /// <summary>
-        /// This abstracts away platform & sample viewer-specific code for accessing local files
+        /// This abstracts away platform & sample viewer-specific code for accessing local files.
         /// </summary>
-        /// <returns>String that is the path to the file on disk</returns>
+        /// <returns>String that is the path to the file on disk.</returns>
         private string GetMmpkPath()
         {
-            #region offlinedata
-
-            // The mobile map package will be downloaded from ArcGIS Online
-            // The data manager (a component of the sample viewer, *NOT* the runtime
-            //     handles the offline data process
-
-            // The desired MMPK is expected to be called Yellowstone.mmpk
-            string filename = "Yellowstone.mmpk";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e1f3a7254cb845b09450f54937c16061
-			return Path.Combine(folder, "SampleData", "OpenMobileMap", filename);
-            #endregion offlinedata
+            return DataManager.GetDataFolder("e1f3a7254cb845b09450f54937c16061", "Yellowstone.mmpk");
         }
 
         private void CreateLayout()
         {
-            // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            // Create a new vertical layout for the app.
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Add a map view to the layout
+            // Add a map view to the layout.
             _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
-            // Show the layout in the app
+            // Show the layout in the app.
             SetContentView(layout);
         }
     }

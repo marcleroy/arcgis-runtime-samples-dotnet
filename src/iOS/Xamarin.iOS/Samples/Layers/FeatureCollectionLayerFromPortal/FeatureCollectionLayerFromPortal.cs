@@ -1,155 +1,105 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Portal;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureCollectionLayerFromPortal
+namespace ArcGISRuntime.Samples.FeatureCollectionLayerFromPortal
 {
     [Register("FeatureCollectionLayerFromPortal")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Create feature collection layer (Portal item)",
+        category: "Layers",
+        description: "Create a feature collection layer from a portal item.",
+        instructions: "The feature collection is loaded from the Portal item when the sample starts.",
+        tags: new[] { "collection", "feature collection", "feature collection layer", "id", "item", "map notes", "portal" })]
     public class FeatureCollectionLayerFromPortal : UIViewController
     {
-        // Reference to the MapView used in the app
+        // Hold references to UI controls.
         private MapView _myMapView;
 
-        // Default portal item Id to load features from
-        private const string FeatureCollectionItemId = "5ffe7733754f44a9af12a489250fe12b";
-
-        // Text field for specifying a portal item Id
-        UITextField _collectionItemIdTextBox;
-
-        UIButton _addFeaturesButton;
+        // Portal item Id to load features from.
+        private const string FeatureCollectionItemId = "32798dfad17942858d5eef82ee802f0b";
 
         public FeatureCollectionLayerFromPortal()
         {
             Title = "Create a feature collection layer from a portal item";
         }
 
-        public override void ViewDidLoad()
+        private async void Initialize()
         {
-            base.ViewDidLoad();
-
-            // Create the layout
-            CreateLayout();
-
-            // Initialize the app
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height - 50);
-
-            _collectionItemIdTextBox.Frame = new CoreGraphics.CGRect(10, View.Bounds.Height - 50, View.Bounds.Width - 10, 20);
-
-            _addFeaturesButton.Frame =  new CoreGraphics.CGRect(0, View.Bounds.Height -30, View.Bounds.Width, 30);
-
-            base.ViewDidLayoutSubviews();
-        }
-
-        private void Initialize()
-        {
-            // Add a default value for the portal item Id
-            _collectionItemIdTextBox.Text = FeatureCollectionItemId;
-
             // Create a new map with the oceans basemap and add it to the map view
-            Map myMap = new Map(Basemap.CreateOceans());
-            _myMapView.Map = myMap;
-        }
+            _myMapView.Map = new Map(Basemap.CreateOceans());
 
-        private async void OpenFeaturesFromArcGISOnline(string itemId)
-        {
             try
             {
-                // Open a portal item containing a feature collection
+                // Open a portal item containing a feature collection.
                 ArcGISPortal portal = await ArcGISPortal.CreateAsync();
-                PortalItem collectionItem = await PortalItem.CreateAsync(portal, itemId);
+                PortalItem collectionItem = await PortalItem.CreateAsync(portal, FeatureCollectionItemId);
 
-                // Verify that the item is a feature collection
+                // Verify that the item is a feature collection.
                 if (collectionItem.Type == PortalItemType.FeatureCollection)
                 {
-                    // Create a new FeatureCollection from the item
+                    // Create a new FeatureCollection from the item.
                     FeatureCollection featureCollection = new FeatureCollection(collectionItem);
 
-                    // Create a layer to display the collection and add it to the map as an operational layer
-                    FeatureCollectionLayer featureCollectionLayer = new FeatureCollectionLayer(featureCollection);
-                    featureCollectionLayer.Name = collectionItem.Title;
+                    // Create a layer to display the collection and add it to the map as an operational layer.
+                    FeatureCollectionLayer featureCollectionLayer = new FeatureCollectionLayer(featureCollection)
+                    {
+                        Name = collectionItem.Title
+                    };
 
                     _myMapView.Map.OperationalLayers.Add(featureCollectionLayer);
                 }
                 else
                 {
-                    var alert = new UIAlertView("Feature Collection", "Portal item with ID '" + itemId + "' is not a feature collection.", null, "OK");
+                    UIAlertView alert = new UIAlertView("Feature Collection", "Portal item with ID '" + FeatureCollectionItemId + "' is not a feature collection.", (IUIAlertViewDelegate) null, "OK");
                     alert.Show();
                 }
             }
             catch (Exception ex)
             {
-                var alert = new UIAlertView("Error", "Unable to open item with ID '" + itemId + "': " + ex.Message, null, "OK");
+                UIAlertView alert = new UIAlertView("Error", "Unable to open item with ID '" + FeatureCollectionItemId + "': " + ex.Message, (IUIAlertViewDelegate) null, "OK");
                 alert.Show();
             }
         }
 
-        private void OpenPortalFeatureCollectionClick(object sender, EventArgs e)
+        public override void ViewDidLoad()
         {
-            // Get the portal item Id from the user
-            var collectionItemId = _collectionItemIdTextBox.Text.Trim();
-
-            // Make sure an Id was entered
-            if (string.IsNullOrEmpty(collectionItemId))
-            {
-                var alert = new UIAlertView("Feature Collection ID", "Please enter a portal item ID", null, "OK");
-                alert.Show();
-                return;
-            }
-
-            // Call a function to add the feature collection from the specified portal item
-            OpenFeaturesFromArcGISOnline(collectionItemId);
+            base.ViewDidLoad();
+            Initialize();
         }
 
-        private void CreateLayout()
+        public override void LoadView()
         {
-            // Store the main view's width and height
-            var appViewWidth = View.Bounds.Width;
-            var appViewHeight = View.Bounds.Height;
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            // Define an offset from the top of the page (to account for the iOS status bar)
-            var yPageOffset = 60;
-
-
-            // Create a new MapView
             _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Create a text input for the portal item Id
-            _collectionItemIdTextBox = new UITextField();
-            _collectionItemIdTextBox.BackgroundColor = UIColor.LightGray;
-            // Allow pressing 'return' to dismiss the keyboard
-            _collectionItemIdTextBox.ShouldReturn += (textField) => { textField.ResignFirstResponder(); return true; };
+            // Add the views.
+            View.AddSubviews(_myMapView);
 
-            // Create a button for adding features from a portal item
-            _addFeaturesButton = new UIButton(UIButtonType.Custom);
-            _addFeaturesButton.SetTitle("Add from portal item", UIControlState.Normal);
-            _addFeaturesButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            _addFeaturesButton.BackgroundColor = UIColor.White;
-
-            // Assign a click handler to the UIButton
-            _addFeaturesButton.TouchUpInside += OpenPortalFeatureCollectionClick;
-
-            // Add the MapView, UITextField, and UIButton to the page
-            View.AddSubviews(_myMapView, _collectionItemIdTextBox, _addFeaturesButton);
-            View.BackgroundColor = UIColor.White;
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

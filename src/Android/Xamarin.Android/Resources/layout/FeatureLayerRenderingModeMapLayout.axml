@@ -3,12 +3,20 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <Esri.ArcGISRuntime.UI.MapView
+    <TextView
+        android:text="Static:"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <Esri.ArcGISRuntime.UI.Controls.MapView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:id="@+id/Top_MyMapView" />
-    <Esri.ArcGISRuntime.UI.MapView
+    <TextView
+        android:text="Dynamic:"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <Esri.ArcGISRuntime.UI.Controls.MapView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_weight="1"

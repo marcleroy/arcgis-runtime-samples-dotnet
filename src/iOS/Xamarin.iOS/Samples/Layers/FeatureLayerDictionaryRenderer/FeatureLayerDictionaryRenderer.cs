@@ -7,127 +7,114 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System.IO;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDictionaryRenderer
+namespace ArcGISRuntime.Samples.FeatureLayerDictionaryRenderer
 {
     [Register("FeatureLayerDictionaryRenderer")]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("c78b149a1d52414682c86a5feeb13d30", "e0d41b4b409a49a5a7ba11939d8535dc")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Dictionary renderer with feature layer",
+        category: "Layers",
+        description: "Convert features into graphics to show them with mil2525d symbols.",
+        instructions: "Pan and zoom around the map. Observe the displayed military symbology on the map.",
+        tags: new[] { "military", "symbol" })]
     public class FeatureLayerDictionaryRenderer : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public FeatureLayerDictionaryRenderer()
         {
-            this.Title = "Feature layer dictionary renderer";
+            Title = "Feature layer dictionary renderer";
+        }
+
+        private async void Initialize()
+        {
+            // Create new Map with basemap.
+            Map map = new Map(Basemap.CreateTopographic());
+
+            // Provide Map to the MapView.
+            _myMapView.Map = map;
+
+            // Get the path to the geodatabase.
+            string geodbFilePath = DataManager.GetDataFolder("e0d41b4b409a49a5a7ba11939d8535dc", "militaryoverlay.geodatabase");
+
+            // Load the geodatabase from local storage.
+            Geodatabase baseGeodatabase = await Geodatabase.OpenAsync(geodbFilePath);
+
+            // Get the path to the symbol dictionary.
+            string symbolFilepath = DataManager.GetDataFolder("c78b149a1d52414682c86a5feeb13d30", "mil2525d.stylx");
+
+            try
+            {
+                // Load the symbol dictionary from local storage.
+                DictionarySymbolStyle symbolStyle = await DictionarySymbolStyle.CreateFromFileAsync(symbolFilepath);
+
+                // Add geodatabase features to the map, using the defined symbology.
+                foreach (GeodatabaseFeatureTable table in baseGeodatabase.GeodatabaseFeatureTables)
+                {
+                    // Load the table.
+                    await table.LoadAsync();
+
+                    // Create the feature layer from the table.
+                    FeatureLayer layer = new FeatureLayer(table);
+
+                    // Load the layer.
+                    await layer.LoadAsync();
+
+                    // Create and use a Dictionary Renderer using the DictionarySymbolStyle.
+                    layer.Renderer = new DictionaryRenderer(symbolStyle);
+
+                    // Add the layer to the map.
+                    map.OperationalLayers.Add(layer);
+                }
+
+                // Create geometry for the center of the map.
+                MapPoint centerGeometry = new MapPoint(-13549402.587055, 4397264.96879385, SpatialReference.Create(3857));
+
+                // Set the map's viewpoint to highlight the desired content.
+                _myMapView.SetViewpoint(new Viewpoint(centerGeometry, 201555));
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
         }
 
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization
-            CreateLayout();
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            base.ViewDidLayoutSubviews();
-        }
-
-        private void CreateLayout()
-        {
-            // Create MapView
             _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Add MapView to the page
+            // Add the views.
             View.AddSubviews(_myMapView);
-        }
 
-        private async void Initialize()
-        {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateTopographic());
-
-            // Provide Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Create geometry for the center of the map
-            MapPoint centerGeometry = new MapPoint(-13549402.587055, 4397264.96879385, SpatialReference.Create(3857));
-
-            // Set the map's viewpoint to highlight the desired content
-            await _myMapView.SetViewpointAsync(new Viewpoint(centerGeometry, 201555));
-
-            // Get the path to the geodatabase
-            string geodbFilePath = GetGeodatabasePath();
-
-            // Load the geodatabase from local storage
-            Geodatabase baseGeodatabase = await Geodatabase.OpenAsync(geodbFilePath);
-
-            // Get the path to the symbol dictionary
-            string symbolFilepath = GetStyleDictionaryPath();
-
-            // Load the symbol dictionary from local storage
-            //     Note that the type of the symbol definition must be explicitly provided along with the file name
-            DictionarySymbolStyle symbolStyle = await DictionarySymbolStyle.OpenAsync("mil2525d", symbolFilepath);
-
-            // Add geodatabase features to the map, using the defined symbology
-            foreach (FeatureTable table in baseGeodatabase.GeodatabaseFeatureTables)
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
             {
-                // Load the table
-                await table.LoadAsync();
-
-                // Create the feature layer from the table
-                FeatureLayer myLayer = new FeatureLayer(table);
-
-                // Load the layer
-                await myLayer.LoadAsync();
-
-                // Create a Dictionary Renderer using the DictionarySymbolStyle
-                DictionaryRenderer dictRenderer = new DictionaryRenderer(symbolStyle);
-
-                // Apply the dictionary renderer to the layer
-                myLayer.Renderer = dictRenderer;
-
-                // Add the layer to the map
-                myMap.OperationalLayers.Add(myLayer);
-            }
-        }
-
-        // Get the file path for the style dictionary
-        private string GetStyleDictionaryPath()
-        {
-            #region offlinedata
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e34835bf5ec5430da7cf16bb8c0b075c
-			return Path.Combine(folder, "SampleData", "FeatureLayerDictionaryRenderer", "mil2525d.stylx");
-            #endregion offlinedata
-        }
-
-        // Get the file path for the geodatabase
-        private string GetGeodatabasePath()
-        {
-            #region offlinedata
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e0d41b4b409a49a5a7ba11939d8535dc
-			return Path.Combine(folder, "SampleData", "FeatureLayerDictionaryRenderer", "militaryoverlay.geodatabase");
-            #endregion offlinedata
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

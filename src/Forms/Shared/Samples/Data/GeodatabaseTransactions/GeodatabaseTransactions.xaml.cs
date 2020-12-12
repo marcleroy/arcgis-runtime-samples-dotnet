@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -24,8 +24,14 @@ using Colors = Windows.UI.Colors;
 using Colors = System.Drawing.Color;
 #endif
 
-namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
+namespace ArcGISRuntime.Samples.GeodatabaseTransactions
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Geodatabase transactions",
+        category: "Data",
+        description: "Use transactions to manage how changes are committed to a geodatabase.",
+        instructions: "When the sample loads, a feature service is taken offline as a geodatabase. When the geodatabase is ready, you can add multiple types of features. To apply edits directly, uncheck the 'Require a transaction for edits' checkbox. When using transactions, use the buttons to start editing and stop editing. When you stop editing, you can choose to commit the changes or roll them back. At any point, you can synchronize the local geodatabase with the feature service.",
+        tags: new[] { "commit", "database", "geodatabase", "transact", "transactions" })]
     public partial class GeodatabaseTransactions : ContentPage
     {
         // URL for the editable feature service
@@ -45,8 +51,6 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
         {
             InitializeComponent();
 
-            Title = "Geodatabase transactions";
-            
             // When the spatial reference changes (the map loads) add the local geodatabase tables as feature layers
             MyMapView.SpatialReferenceChanged += async (s, e) =>
             {
@@ -58,14 +62,14 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             };
             
             // Create a new map with the oceans basemap and add it to the map view
-            var map = new Map(Basemap.CreateOceans());
+            Map map = new Map(Basemap.CreateOceans());
             MyMapView.Map = map;
         }
 
         private async Task GetLocalGeodatabase()
         {
             // Get the path to the local geodatabase for this platform (temp directory, for example)
-            var localGeodatabasePath = GetGdbPath();
+            string localGeodatabasePath = GetGdbPath();
 
             try
             {
@@ -80,11 +84,11 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 else
                 {
                     // Create a new GeodatabaseSyncTask with the uri of the feature server to pull from
-                    var uri = new Uri(SyncServiceUrl);
-                    var gdbTask = await GeodatabaseSyncTask.CreateAsync(uri);
+                    Uri uri = new Uri(SyncServiceUrl);
+                    GeodatabaseSyncTask gdbTask = await GeodatabaseSyncTask.CreateAsync(uri);
 
                     // Create parameters for the task: layers and extent to include, out spatial reference, and sync model
-                    var gdbParams = await gdbTask.CreateDefaultGenerateGeodatabaseParametersAsync(_extent);
+                    GenerateGeodatabaseParameters gdbParams = await gdbTask.CreateDefaultGenerateGeodatabaseParametersAsync(_extent);
                     gdbParams.OutSpatialReference = MyMapView.SpatialReference;
                     gdbParams.SyncModel = SyncModel.Layer;
                     gdbParams.LayerOptions.Clear();
@@ -127,7 +131,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 // Show a message for the exception encountered
                 Device.BeginInvokeOnMainThread(() =>
                 {
-                    DisplayAlert("Generate Geodatabase","Unable to create offline database: " + ex.Message,"OK");
+                    Application.Current.MainPage.DisplayAlert("Generate Geodatabase","Unable to create offline database: " + ex.Message,"OK");
                 });
             }
         }
@@ -140,24 +144,31 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             // Read the geodatabase tables and add them as layers
             foreach (GeodatabaseFeatureTable table in _localGeodatabase.GeodatabaseFeatureTables)
             {
-                // Load the table so the TableName can be read
-                await table.LoadAsync();
-
-                // Store a reference to the Birds table
-                if (table.TableName.ToLower().Contains("birds"))
+                try
                 {
-                    _birdTable = table;
-                }
+                    // Load the table so the TableName can be read
+                    await table.LoadAsync();
 
-                // Store a reference to the Marine table
-                if (table.TableName.ToLower().Contains("marine"))
+                    // Store a reference to the Birds table
+                    if (table.TableName.ToLower().Contains("birds"))
+                    {
+                        _birdTable = table;
+                    }
+
+                    // Store a reference to the Marine table
+                    if (table.TableName.ToLower().Contains("marine"))
+                    {
+                        _marineTable = table;
+                    }
+
+                    // Create a new feature layer to show the table in the map
+                    FeatureLayer layer = new FeatureLayer(table);
+                    Device.BeginInvokeOnMainThread(() => MyMapView.Map.OperationalLayers.Add(layer));
+                }
+                catch (Exception e)
                 {
-                    _marineTable = table;
+                    await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
                 }
-
-                // Create a new feature layer to show the table in the map
-                var layer = new FeatureLayer(table);
-                Device.BeginInvokeOnMainThread(() => MyMapView.Map.OperationalLayers.Add(layer));
             }
 
             // Handle the transaction status changed event
@@ -166,7 +177,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             // Zoom the map view to the extent of the generated local datasets
             Device.BeginInvokeOnMainThread(() =>
             {
-                MyMapView.SetViewpointGeometryAsync(_marineTable.Extent);
+                MyMapView.SetViewpoint(new Viewpoint(_marineTable.Extent));
                 StartEditingButton.IsEnabled = true;
             });
         }
@@ -184,20 +195,17 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 // These buttons should be enabled when there is NOT a transaction
                 StartEditingButton.IsEnabled = !e.IsInTransaction;
                 SyncEditsButton.IsEnabled = !e.IsInTransaction;
+                RequireTransactionCheckBox.IsEnabled = !e.IsInTransaction;
             });
         }
         
        private string GetGdbPath()
         {
             // Set the platform-specific path for storing the geodatabase
-            String folder = "";
-
 #if WINDOWS_UWP
-            folder = Windows.Storage.ApplicationData.Current.LocalFolder.Path.ToString();
-#elif __IOS__
-            folder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-#elif __ANDROID__
-            folder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string folder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+#elif __IOS__ || __ANDROID__
+            string folder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 #endif
             // Set the final path
             return Path.Combine(folder, "savethebay.geodatabase");
@@ -217,7 +225,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
         private async void AddNewFeature(object sender, EventArgs args)
         {
             // See if it was the "Birds" or "Marine" button that was clicked
-            Button addFeatureButton = sender as Button;
+            Button addFeatureButton = (Button)sender;
 
             try
             {
@@ -233,7 +241,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 {
                     editTable = _birdTable;
                 }
-                else if (addFeatureButton == AddMarineButton)
+                else
                 {
                     editTable = _marineTable;
                 }
@@ -275,7 +283,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
         private async void StopEditTransaction(object sender, EventArgs e)
         {
             // Ask the user if they want to commit or rollback the transaction (or cancel to keep working in the transaction)
-            string choice = await DisplayActionSheet("Transaction", "Cancel", null, new string[] { "Commit", "Rollback" });
+            string choice = await ((Page)Parent).DisplayActionSheet("Transaction", "Cancel", null, "Commit", "Rollback");
 
             if (choice == "Commit")
             {
@@ -315,7 +323,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             // Warn the user if disabling transactions while a transaction is active
             if (!mustHaveTransaction && _localGeodatabase.IsInTransaction)
             {
-                DisplayAlert("Stop editing to end the current transaction.", "Current Transaction", "OK");
+                Application.Current.MainPage.DisplayAlert("Stop editing to end the current transaction.", "Current Transaction", "OK");
                 RequireTransactionCheckBox.IsToggled = true;
                 return;
             }
@@ -336,10 +344,10 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             try
             {
                 // Create a sync task with the URL of the feature service to sync
-                var syncTask = await GeodatabaseSyncTask.CreateAsync(new Uri(SyncServiceUrl));
+                GeodatabaseSyncTask syncTask = await GeodatabaseSyncTask.CreateAsync(new Uri(SyncServiceUrl));
 
                 // Create sync parameters
-                var taskParameters = await syncTask.CreateDefaultSyncGeodatabaseParametersAsync(_localGeodatabase);
+                SyncGeodatabaseParameters taskParameters = await syncTask.CreateDefaultSyncGeodatabaseParametersAsync(_localGeodatabase);
 
                 // Create a synchronize geodatabase job, pass in the parameters and the geodatabase
                 SyncGeodatabaseJob job = syncTask.SyncGeodatabase(taskParameters, _localGeodatabase);
@@ -366,7 +374,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 };
 
                 // Await the completion of the job
-                var result = await job.GetResultAsync();
+                await job.GetResultAsync();
             }
             catch (Exception ex)
             {

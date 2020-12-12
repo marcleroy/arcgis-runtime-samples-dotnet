@@ -7,25 +7,33 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
+using System.Drawing;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Drawing;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
+namespace ArcGISRuntime.Samples.ChangeFeatureLayerRenderer
 {
     [Register("ChangeFeatureLayerRenderer")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Change feature layer renderer",
+        category: "Layers",
+        description: "Change the appearance of a feature layer with a renderer.",
+        instructions: "Use the buttons to change the renderer on the feature layer. The original renderer displays orange circles, the diameters of which are proportional to carbon storage of each tree. When the blue renderer in this sample is applied, it displays the location of the trees simply as blue points.",
+        tags: new[] { "feature layer", "renderer", "visualization" })]
     public class ChangeFeatureLayerRenderer : UIViewController
     {
-        // Create and hold reference to the used MapView
+        // Hold references to UI controls.
         private MapView _myMapView;
+        private UIBarButtonItem _resetButton;
+        private UIBarButtonItem _overrideButton;
 
-        //Create and hold reference to the feature layer
+        // Hold reference to the feature layer.
         private FeatureLayer _featureLayer;
 
         public ChangeFeatureLayerRenderer()
@@ -33,113 +41,115 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
             Title = "Change feature layer renderer";
         }
 
-        public override void ViewDidLoad()
+        private void Initialize()
         {
-            base.ViewDidLoad();
+            // Create new Map with basemap.
+            Map map = new Map(Basemap.CreateTopographic());
 
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
+            // Create and set initial map area.
+            Envelope initialLocation = new Envelope(-1.30758164047166E7, 4014771.46954516, -1.30730056797177E7,
+                4016869.78617381, SpatialReferences.WebMercator);
 
-        }
+            // Set the initial viewpoint for map.
+            map.InitialViewpoint = new Viewpoint(initialLocation);
 
-		public override void ViewWillDisappear(bool animated)
-		{
-			base.ViewWillDisappear(animated);
-			NavigationController.ToolbarHidden = true;
-		}
+            // Provide used Map to the MapView.
+            _myMapView.Map = map;
 
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create URI to the used feature service.
+            Uri serviceUri =
+                new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/PoolPermits/FeatureServer/0");
 
-            base.ViewDidLayoutSubviews();
-        }
-
-        private async void Initialize()
-        {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateTopographic());
-
-            // Create and set initial map area
-            Envelope initialLocation = new Envelope(
-                -1.30758164047166E7, 4014771.46954516, -1.30730056797177E7, 4016869.78617381,
-                SpatialReferences.WebMercator);
-
-            // Set the initial viewpoint for map
-            myMap.InitialViewpoint = new Viewpoint(initialLocation);
-
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Create uri to the used feature service
-            var serviceUri = new Uri(
-               "https://sampleserver6.arcgisonline.com/arcgis/rest/services/PoolPermits/FeatureServer/0");
-
-            // Initialize feature table using a url to feature server url
+            // Initialize feature table using a URL to a feature service.
             ServiceFeatureTable featureTable = new ServiceFeatureTable(serviceUri);
 
-            // Initialize a new feature layer based on the feature table
+            // Initialize a new feature layer based on the feature table.
             _featureLayer = new FeatureLayer(featureTable);
-
-            // Make sure that the feature layer gets loaded
-            await _featureLayer.LoadAsync();
-
-            // Check for the load status. If the layer is loaded then add it to map
-            if (_featureLayer.LoadStatus == Esri.ArcGISRuntime.LoadStatus.Loaded)
-            {
-                // Add the feature layer to the map
-                myMap.OperationalLayers.Add(_featureLayer);
-            }
+            map.OperationalLayers.Add(_featureLayer);
         }
 
         private void OnOverrideButtonClicked(object sender, EventArgs e)
         {
-            // Create a symbol to be used in the renderer
-            SimpleLineSymbol symbol = new SimpleLineSymbol()
+            // Create a symbol to be used in the renderer.
+            SimpleLineSymbol symbol = new SimpleLineSymbol
             {
                 Color = Color.Blue,
                 Width = 2,
                 Style = SimpleLineSymbolStyle.Solid
             };
 
-            // Create a new renderer using the symbol just created
-            SimpleRenderer renderer = new SimpleRenderer(symbol);
-            
-            // Assign the new renderer to the feature layer
-            _featureLayer.Renderer = renderer;
+            // Create and apply a new renderer using the symbol just created.
+            _featureLayer.Renderer = new SimpleRenderer(symbol);
         }
 
         private void OnResetButtonClicked(object sender, EventArgs e)
         {
-            // Reset the renderer to default
+            // Reset the renderer to default.
             _featureLayer.ResetRenderer();
         }
 
-        private void CreateLayout()
+        public override void ViewDidLoad()
         {
-            // Create a MapView
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
             _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Create a button to reset the renderer
-            var resetButton = new UIBarButtonItem() { Title = "Reset", Style = UIBarButtonItemStyle.Plain };
-            resetButton.Clicked += OnResetButtonClicked;
+            _resetButton = new UIBarButtonItem();
+            _resetButton.Title = "Reset";
 
-            // Create a button to apply new renderer
-            var overrideButton = new UIBarButtonItem() { Title = "Override", Style = UIBarButtonItemStyle.Plain };
-            overrideButton.Clicked += OnOverrideButtonClicked;
+            _overrideButton = new UIBarButtonItem();
+            _overrideButton.Title = "Override renderer";
 
-            // Add the buttons to the toolbar
-            SetToolbarItems(new UIBarButtonItem[] {resetButton,
-                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace, null),
-                overrideButton}, false);
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                _resetButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _overrideButton
+            };
 
-            // Show the toolbar
-            NavigationController.ToolbarHidden = false;
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
 
-            // Add MapView to the page
-            View.AddSubviews(_myMapView);
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _resetButton.Clicked += OnResetButtonClicked;
+            _overrideButton.Clicked += OnOverrideButtonClicked;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _resetButton.Clicked -= OnResetButtonClicked;
+            _overrideButton.Clicked -= OnOverrideButtonClicked;
         }
     }
 }

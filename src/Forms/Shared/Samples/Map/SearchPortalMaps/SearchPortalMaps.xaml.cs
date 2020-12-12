@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Esri.ArcGISRuntime;
 using Xamarin.Forms;
 
 
@@ -25,11 +26,18 @@ using UIKit;
 
 #if __ANDROID__
 using Android.App;
+using Application = Xamarin.Forms.Application;
 using Xamarin.Auth;
 #endif
 
-namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
+namespace ArcGISRuntime.Samples.SearchPortalMaps
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Search for webmap",
+        category: "Map",
+        description: "Find webmap portal items by using a search term.",
+        instructions: "Enter search terms into the search bar. Once the search is complete, a list is populated with the resultant webmaps. Tap on a webmap to set it to the map view. Scrolling to the bottom of the webmap recycler view will get more results.",
+        tags: new[] { "keyword", "query", "search", "webmap" })]
     public partial class SearchPortalMaps : ContentPage, IOAuthAuthorizeHandler
     {
         // Constants for OAuth-related values ...
@@ -54,24 +62,16 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
             RedirectUrlEntry.Text = _oAuthRedirectUrl;
 
             // Change the style of the layer list view for Android and UWP
-            Device.OnPlatform(
-                Android: () =>
-                {
-                    // Black background on Android (transparent by default)
-                    MapsListView.BackgroundColor = Color.Black;
-                    SearchMapsUI.BackgroundColor = Color.Black;
-                    OAuthSettingsGrid.BackgroundColor = Color.Black;
-                },
-                WinPhone: () =>
-                {
-                    // Semi-transparent background on Windows with a small margin around the control
-                    MapsListView.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
-                    MapsListView.Margin = new Thickness(50);
-                    SearchMapsUI.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
-                    SearchMapsUI.Margin = new Thickness(50);
-                    OAuthSettingsGrid.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
-                    OAuthSettingsGrid.Margin = new Thickness(50);
-                });
+            if (Device.RuntimePlatform == Device.UWP)
+            {
+                // Semi-transparent background on Windows with a small margin around the control
+                MapsListView.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
+                MapsListView.Margin = new Thickness(50);
+                SearchMapsUI.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
+                SearchMapsUI.Margin = new Thickness(50);
+                OAuthSettingsGrid.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
+                OAuthSettingsGrid.Margin = new Thickness(50);
+            }
         }
 
         private void DisplayDefaultMap()
@@ -90,8 +90,14 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
         private void SaveOAuthSettings(object sender, EventArgs e)
         {
-            _appClientId = ClientIDEntry.Text.Trim();
-            _oAuthRedirectUrl = RedirectUrlEntry.Text.Trim();
+            var appClientId = ClientIDEntry.Text.Trim();
+            var oAuthRedirectUrl = RedirectUrlEntry.Text.Trim();
+
+            if (!String.IsNullOrWhiteSpace(appClientId) && !String.IsNullOrWhiteSpace(oAuthRedirectUrl))
+            {
+                _appClientId = appClientId;
+                _oAuthRedirectUrl = oAuthRedirectUrl;
+            }
 
             OAuthSettingsGrid.IsVisible = false;
 
@@ -101,31 +107,37 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
         private async void SearchPublicMaps(string searchText)
         {
-            // Get web map portal items from a keyword search
-            IEnumerable<PortalItem> mapItems = null;
-            ArcGISPortal portal;
+            try
+            {
+                // Get web map portal items from a keyword search
+                IEnumerable<PortalItem> mapItems;
 
-            // Connect to the portal (anonymously)
-            portal = await ArcGISPortal.CreateAsync(new Uri(ArcGISOnlineUrl));
+                // Connect to the portal (anonymously)
+                ArcGISPortal portal = await ArcGISPortal.CreateAsync(new Uri(ArcGISOnlineUrl));
 
-            // Create a query expression that will get public items of type 'web map' with the keyword(s) in the items tags
-            var queryExpression = string.Format("tags:\"{0}\" access:public type: (\"web map\" NOT \"web mapping application\")", searchText);
+                // Create a query expression that will get public items of type 'web map' with the keyword(s) in the items tags
+                string queryExpression = $"tags:\"{searchText}\" access:public type: (\"web map\" NOT \"web mapping application\")";
             
-            // Create a query parameters object with the expression and a limit of 10 results
-            PortalQueryParameters queryParams = new PortalQueryParameters(queryExpression, 10);
+                // Create a query parameters object with the expression and a limit of 10 results
+                PortalQueryParameters queryParams = new PortalQueryParameters(queryExpression, 10);
 
-            // Search the portal using the query parameters and await the results
-            PortalQueryResultSet<PortalItem> findResult = await portal.FindItemsAsync(queryParams);
+                // Search the portal using the query parameters and await the results
+                PortalQueryResultSet<PortalItem> findResult = await portal.FindItemsAsync(queryParams);
             
-            // Get the items from the query results
-            mapItems = findResult.Results;
+                // Get the items from the query results
+                mapItems = findResult.Results;
 
-            // Hide the search controls
-            SearchMapsUI.IsVisible = false;
+                // Hide the search controls
+                SearchMapsUI.IsVisible = false;
 
-            // Show the list of web maps
-            MapsListView.ItemsSource = mapItems;
-            MapsListView.IsVisible = true;
+                // Show the list of web maps
+                MapsListView.ItemsSource = mapItems.ToList(); // Explicit ToList() needed to avoid Xamarin.Forms UWP ListView bug.
+                MapsListView.IsVisible = true;
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private void ShowSearchUI(object sender, EventArgs e)
@@ -136,39 +148,42 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
         private async void GetMyMaps(object sender, EventArgs e)
         {
-            // Get web map portal items in the current user's folder or from a keyword search
-            IEnumerable<PortalItem> mapItems = null;
-            ArcGISPortal portal;
-
-            // Call a sub that will force the user to log in to ArcGIS Online (if they haven't already)
-            var loggedIn = await EnsureLoggedInAsync();
-            if (!loggedIn) { return; }
-
-            // Connect to the portal (will connect using the provided credentials)
-            portal = await ArcGISPortal.CreateAsync(new Uri(ArcGISOnlineUrl));
-
-            // Get the user's content (items in the root folder and a collection of sub-folders)
-            PortalUserContent myContent = await portal.User.GetContentAsync();
-
-            // Get the web map items in the root folder
-            mapItems = from item in myContent.Items where item.Type == PortalItemType.WebMap select item;
-
-            // Loop through all sub-folders and get web map items, add them to the mapItems collection
-            foreach (PortalFolder folder in myContent.Folders)
+            try
             {
-                IEnumerable<PortalItem> folderItems = await portal.User.GetContentAsync(folder.FolderId);
-                mapItems.Concat(from item in folderItems where item.Type == PortalItemType.WebMap select item);
-            }
+                // Call a sub that will force the user to log in to ArcGIS Online (if they haven't already)
+                bool loggedIn = await EnsureLoggedInAsync();
+                if (!loggedIn) { return; }
 
-            // Show the list of web maps
-            MapsListView.ItemsSource = mapItems;
-            MapsListView.IsVisible = true;
+                // Connect to the portal (will connect using the provided credentials)
+                ArcGISPortal portal = await ArcGISPortal.CreateAsync(new Uri(ArcGISOnlineUrl));
+
+                // Get the user's content (items in the root folder and a collection of sub-folders)
+                PortalUserContent myContent = await portal.User.GetContentAsync();
+
+                // Get the web map items in the root folder
+                IEnumerable<PortalItem> mapItems = from item in myContent.Items where item.Type == PortalItemType.WebMap select item;
+
+                // Loop through all sub-folders and get web map items, add them to the mapItems collection
+                foreach (PortalFolder folder in myContent.Folders)
+                {
+                    IEnumerable<PortalItem> folderItems = await portal.User.GetContentAsync(folder.FolderId);
+                    mapItems = mapItems.Concat(from item in folderItems where item.Type == PortalItemType.WebMap select item);
+                }
+
+                // Show the list of web maps
+                MapsListView.ItemsSource = mapItems.ToList(); // Explicit ToList() needed to avoid Xamarin.Forms UWP ListView bug.
+                MapsListView.IsVisible = true;
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }
         
         private void MapItemSelected(object sender, SelectedItemChangedEventArgs e)
         {
             // Get the selected web map item in the list box
-            PortalItem selectedMap = e.SelectedItem as PortalItem;
+            PortalItem selectedMap = MapsListView.SelectedItem as PortalItem;
             if (selectedMap == null) { return; }
 
             // Create a new map, pass the web map portal item to the constructor
@@ -186,17 +201,14 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
         private void WebMapLoadStatusChanged(object sender, Esri.ArcGISRuntime.LoadStatusEventArgs e)
         {
-            // Get the current status
-            var status = e.Status;
-
             // Report errors if map failed to load
-            if (status == Esri.ArcGISRuntime.LoadStatus.FailedToLoad)
+            if (e.Status == LoadStatus.FailedToLoad)
             {
-                var map = sender as Map;
-                var err = map.LoadError;
+                Map map = (Map)sender;
+                Exception err = map.LoadError;
                 if (err != null)
                 {
-                    DisplayAlert(err.Message, "Map Load Error", "OK");
+                    Device.BeginInvokeOnMainThread(() => Application.Current.MainPage.DisplayAlert(err.Message, "Map Load Error", "OK"));
                 }
             }
         }
@@ -208,19 +220,21 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
             try
             {
                 // Create a challenge request for portal credentials (OAuth credential request for arcgis.com)
-                CredentialRequestInfo challengeRequest = new CredentialRequestInfo();
-
-                // Use the OAuth implicit grant flow
-                challengeRequest.GenerateTokenOptions = new GenerateTokenOptions
+                CredentialRequestInfo challengeRequest = new CredentialRequestInfo
                 {
-                    TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+
+                    // Use the OAuth implicit grant flow
+                    GenerateTokenOptions = new GenerateTokenOptions
+                    {
+                        TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                    },
+
+                    // Indicate the url (portal) to authenticate with (ArcGIS Online)
+                    ServiceUri = new Uri(ArcGISOnlineUrl)
                 };
 
-                // Indicate the url (portal) to authenticate with (ArcGIS Online)
-                challengeRequest.ServiceUri = new Uri(ArcGISOnlineUrl);
-
                 // Call GetCredentialAsync on the AuthenticationManager to invoke the challenge handler
-                var cred = await AuthenticationManager.Current.GetCredentialAsync(challengeRequest, false);
+                Credential cred = await AuthenticationManager.Current.GetCredentialAsync(challengeRequest, false);
                 loggedIn = cred != null;
             }
             catch (OperationCanceledException)
@@ -231,7 +245,7 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
             catch (Exception ex)
             {
                 // Login failure
-                await DisplayAlert("Login Error", ex.Message, "OK");
+                await Application.Current.MainPage.DisplayAlert("Login Error", ex.Message, "OK");
             }
 
             return loggedIn;
@@ -253,11 +267,13 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
         private void UpdateAuthenticationManager()
         {
             // Define the server information for ArcGIS Online
-            ServerInfo portalServerInfo = new ServerInfo();
-            // ArcGIS Online URI
-            portalServerInfo.ServerUri = new Uri(ArcGISOnlineUrl);
-            // Type of token authentication to use
-            portalServerInfo.TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit;
+            ServerInfo portalServerInfo = new ServerInfo
+            {
+                // ArcGIS Online URI
+                ServerUri = new Uri(ArcGISOnlineUrl),
+                // Type of token authentication to use
+                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+            };
 
             // Define the OAuth information
             OAuthClientInfo oAuthInfo = new OAuthClientInfo
@@ -322,11 +338,7 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
 #if __ANDROID__
             // Get the current Android Activity
-            var activity = Xamarin.Forms.Forms.Context as Activity;
-#endif
-#if __IOS__
-            // Get the current iOS ViewController
-            var viewController = Xamarin.Forms.Platform.iOS.Platform.GetRenderer(this).ViewController;
+            Activity activity = (Activity)ArcGISRuntime.Droid.MainActivity.Instance;
 #endif
             // Create a new Xamarin.Auth.OAuth2Authenticator using the information passed in
             Xamarin.Auth.OAuth2Authenticator authenticator = new Xamarin.Auth.OAuth2Authenticator(
@@ -348,7 +360,11 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
                 {
 #if __IOS__
                     // Dismiss the OAuth UI when complete
-                    viewController.DismissViewController(true, null);
+                    Device.BeginInvokeOnMainThread(() =>
+                    {
+                        var viewController = UIApplication.SharedApplication.KeyWindow.RootViewController;
+                        viewController.DismissViewController(true, null);
+                    });
 #endif
 
                     // Check if the user is authenticated
@@ -373,13 +389,13 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
                     // Cancel authentication
                     authenticator.OnCancelled();
                 }
+#if __ANDROID__ 
                 finally
                 {
                     // Dismiss the OAuth login
-#if __ANDROID__ 
                     activity.FinishActivity(99);
-#endif
                 }
+#endif
             };
 
             // If an error was encountered when authenticating, set the exception on the TaskCompletionSource
@@ -415,6 +431,7 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
             // Present the OAuth UI (on the app's UI thread) so the user can enter user name and password
             Device.BeginInvokeOnMainThread(() =>
             {
+                var viewController = UIApplication.SharedApplication.KeyWindow.RootViewController;
                 viewController.PresentViewController(authenticator.GetUI(), true, null);
             });
 #endif

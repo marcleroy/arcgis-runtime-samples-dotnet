@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,42 +7,36 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using CoreGraphics;
+using System;
+using System.Drawing;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Drawing;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
+namespace ArcGISRuntime.Samples.FormatCoordinates
 {
     [Register("FormatCoordinates")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Format coordinates",
+        category: "Geometry",
+        description: "Format coordinates in a variety of common notations.",
+        instructions: "Tap on the map to see a callout with the clicked location's coordinate formatted in 4 different ways. You can also put a coordinate string in any of these formats in the text field. Hit Enter and the coordinate string will be parsed to a map location which the callout will move to.",
+        tags: new[] { "USNG", "UTM", "convert", "coordinate", "decimal degrees", "degree minutes seconds", "format", "latitude", "longitude" })]
     public class FormatCoordinates : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
-
-        // Create the text fields
-        private UITextField _utmUITextField = new UITextField() { Placeholder = "UTM" };
-        private UITextField _dmsUITextField = new UITextField() { Placeholder = "Degrees, Minutes, Seconds" };
-        private UITextField _decimalDegreesUITextField = new UITextField() { Placeholder = "Decimal Degrees" };
-        private UITextField _usngUITextField = new UITextField() { Placeholder = "USNG" };
-
-        // Create the labels
-        private UILabel _utmLabel = new UILabel() { Text = "UTM:", TextColor = UIColor.Blue };
-        private UILabel _dmsLabel = new UILabel() { Text = "Degrees, Minutes, Seconds: ", TextColor = UIColor.Blue };
-        private UILabel _decimalDegreeslabel = new UILabel() { Text = "Decimal Degrees: ", TextColor = UIColor.Blue };
-        private UILabel _usngLabel = new UILabel() { Text = "USNG: ", TextColor = UIColor.Blue };
-
-        // Create the recalculate button
-        private UIButton _recalculateButton = new UIButton();
-
-        // Track the most recently edited field
+        // Hold references to UI controls.
+        private MapView _myMapView;
         private UITextField _selectedField;
+        private UITextField _utmEntry;
+        private UITextField _dmsEntry;
+        private UITextField _ddEntry;
+        private UITextField _usngEntry;
+        private NSLayoutConstraint[] _landscapeConstraints;
+        private NSLayoutConstraint[] _portraitConstraints;
 
         public FormatCoordinates()
         {
@@ -51,168 +45,263 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
 
         private void Initialize()
         {
-            // Update the initial field selection
-            _selectedField = _decimalDegreesUITextField;
+            // Update the initial field selection.
+            _selectedField = _ddEntry;
 
-            // Create the map
+            // Create the map.
             _myMapView.Map = new Map(Basemap.CreateStreets());
 
-            // Add the graphics overlay to the map
+            // Add the graphics overlay to the map.
             _myMapView.GraphicsOverlays.Add(new GraphicsOverlay());
 
-            // Create the starting point
+            // Create the starting point.
             MapPoint startingPoint = new MapPoint(0, 0, SpatialReferences.WebMercator);
 
-            // Update the UI with the initial point
-            UpdateUIFromMapPoint(startingPoint);
-
-            // Subscribe to map tap events to enable tapping on map to update coordinates
-            _myMapView.GeoViewTapped += (sender, args) => { UpdateUIFromMapPoint(args.Location); };
+            // Update the UI with the initial point.
+            UpdateUiFromMapPoint(startingPoint);
         }
+
+        private void MyMapView_GeoViewTapped(object sender, GeoViewInputEventArgs e) => UpdateUiFromMapPoint(e.Location);
 
         private void InputValueChanged(object sender, EventArgs e)
         {
-            // Keep track of the last edited field
-            _selectedField = (UITextField)sender;
+            // Keep track of the last edited field.
+            _selectedField = (UITextField) sender;
         }
 
-        private void RecalculateFields(object sender, EventArgs e)
+        private void RecalculateFields(object sender)
         {
-            // Hold the entered point
-            MapPoint enteredPoint = null;
+            // Hold the entered point.
+            MapPoint enteredPoint;
 
-            // Update the point based on which text sent the event
+            // Update the point based on which text sent the event.
             try
             {
-                switch (_selectedField.Placeholder)
+                if (sender == _ddEntry || sender == _dmsEntry)
                 {
-                    case "Decimal Degrees":
-                    case "Degrees, Minutes, Seconds":
-                        enteredPoint =
-                            CoordinateFormatter.FromLatitudeLongitude(_selectedField.Text, _myMapView.SpatialReference);
-                        break;
-
-                    case "UTM":
-                        enteredPoint =
-                            CoordinateFormatter.FromUtm(_selectedField.Text, _myMapView.SpatialReference, UtmConversionMode.NorthSouthIndicators);
-                        break;
-
-                    case "USNG":
-                        enteredPoint =
-                            CoordinateFormatter.FromUsng(_selectedField.Text, _myMapView.SpatialReference);
-                        break;
+                    enteredPoint = CoordinateFormatter.FromLatitudeLongitude(_selectedField.Text, _myMapView.SpatialReference);
+                }
+                else if (sender == _utmEntry)
+                {
+                    enteredPoint = CoordinateFormatter.FromUtm(_selectedField.Text, _myMapView.SpatialReference, UtmConversionMode.NorthSouthIndicators);
+                }
+                else
+                {
+                    enteredPoint = CoordinateFormatter.FromUsng(_selectedField.Text, _myMapView.SpatialReference);
                 }
             }
             catch (Exception ex)
             {
-                // The coordinate is malformed, warn and return
+                // The coordinate is malformed, warn and return.
                 UIAlertController alertController = UIAlertController.Create("Invalid Format", ex.Message, UIAlertControllerStyle.Alert);
-                alertController.AddAction(UIAlertAction.Create("Ok", UIAlertActionStyle.Default, null));
+                alertController.AddAction(UIAlertAction.Create("OK", UIAlertActionStyle.Default, null));
                 PresentViewController(alertController, true, null);
                 return;
             }
 
-            // Update the UI from the MapPoint
-            UpdateUIFromMapPoint(enteredPoint);
+            // Update the UI from the MapPoint.
+            UpdateUiFromMapPoint(enteredPoint);
         }
 
-        private void UpdateUIFromMapPoint(MapPoint startingPoint)
+        private void UpdateUiFromMapPoint(MapPoint selectedPoint)
         {
-            if (startingPoint == null) { return; }
-            // Clear event subscriptions - prevents an infinite loop
-            _utmUITextField.EditingDidBegin -= InputValueChanged;
-            _dmsUITextField.EditingDidBegin -= InputValueChanged;
-            _decimalDegreesUITextField.EditingDidBegin -= InputValueChanged;
-            _usngUITextField.EditingDidBegin -= InputValueChanged;
+            if (selectedPoint == null)
+            {
+                return;
+            }
 
-            // Update the decimal degrees text
-            _decimalDegreesUITextField.Text =
-                CoordinateFormatter.ToLatitudeLongitude(startingPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
+            // Clear event subscriptions - prevents an infinite loop.
+            _utmEntry.EditingDidBegin -= InputValueChanged;
+            _dmsEntry.EditingDidBegin -= InputValueChanged;
+            _ddEntry.EditingDidBegin -= InputValueChanged;
+            _usngEntry.EditingDidBegin -= InputValueChanged;
 
-            // Update the degrees, minutes, seconds text
-            _dmsUITextField.Text = CoordinateFormatter.ToLatitudeLongitude(startingPoint,
-                LatitudeLongitudeFormat.DegreesMinutesSeconds, 1);
+            try
+            {
+                // Update the decimal degrees text.
+                _ddEntry.Text =
+                    CoordinateFormatter.ToLatitudeLongitude(selectedPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
 
-            // Update the UTM text
-            _utmUITextField.Text = CoordinateFormatter.ToUtm(startingPoint, UtmConversionMode.NorthSouthIndicators, true);
+                // Update the degrees, minutes, seconds text.
+                _dmsEntry.Text = CoordinateFormatter.ToLatitudeLongitude(selectedPoint,
+                    LatitudeLongitudeFormat.DegreesMinutesSeconds, 1);
 
-            // Update the USNG text
-            _usngUITextField.Text = CoordinateFormatter.ToUsng(startingPoint, 4, true);
+                // Update the UTM text.
+                _utmEntry.Text = CoordinateFormatter.ToUtm(selectedPoint, UtmConversionMode.NorthSouthIndicators, true);
 
-            // Clear existing graphics overlays
-            _myMapView.GraphicsOverlays[0].Graphics.Clear();
+                // Update the USNG text.
+                _usngEntry.Text = CoordinateFormatter.ToUsng(selectedPoint, 4, true);
 
-            // Create a symbol to symbolize the point
-            SimpleMarkerSymbol symbol = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.X, Color.Yellow, 20);
+                // Clear existing graphics overlays.
+                _myMapView.GraphicsOverlays[0].Graphics.Clear();
 
-            // Create the graphic
-            Graphic symbolGraphic = new Graphic(startingPoint, symbol);
+                // Create a symbol to symbolize the point.
+                SimpleMarkerSymbol symbol = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.X, Color.Yellow, 20);
 
-            // Add the graphic to the graphics overlay
-            _myMapView.GraphicsOverlays[0].Graphics.Add(symbolGraphic);
+                // Create the graphic.
+                Graphic symbolGraphic = new Graphic(selectedPoint, symbol);
 
-            // Restore event subscriptions
-            _utmUITextField.EditingDidBegin += InputValueChanged;
-            _dmsUITextField.EditingDidBegin += InputValueChanged;
-            _decimalDegreesUITextField.EditingDidBegin += InputValueChanged;
-            _usngUITextField.EditingDidBegin += InputValueChanged;
-        }
+                // Add the graphic to the graphics overlay.
+                _myMapView.GraphicsOverlays[0].Graphics.Add(symbolGraphic);
+            }
+            catch (Exception ex)
+            {
+                // The coordinate is malformed, warn and return.
+                UIAlertController alertController = UIAlertController.Create("There was a problem formatting coordinates.", ex.Message, UIAlertControllerStyle.Alert);
+                alertController.AddAction(UIAlertAction.Create("OK", UIAlertActionStyle.Default, null));
+                PresentViewController(alertController, true, null);
+            }
 
-        private void CreateLayout()
-        {
-            View.BackgroundColor = UIColor.White;
-
-            // Create the UI button
-            _recalculateButton.SetTitle("Recalculate", UIControlState.Normal);
-            _recalculateButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            _recalculateButton.TouchUpInside += RecalculateFields;
-
-            // Add views to the page
-            View.AddSubviews(_myMapView, _recalculateButton, _decimalDegreesUITextField, _decimalDegreeslabel, _dmsLabel, _dmsUITextField,
-                _usngLabel, _usngUITextField, _utmLabel, _utmUITextField);
+            // Restore event subscriptions.
+            _utmEntry.EditingDidBegin += InputValueChanged;
+            _dmsEntry.EditingDidBegin += InputValueChanged;
+            _ddEntry.EditingDidBegin += InputValueChanged;
+            _usngEntry.EditingDidBegin += InputValueChanged;
         }
 
         public override void ViewDidLoad()
         {
-            CreateLayout();
-            Initialize();
-
             base.ViewDidLoad();
+            Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            var topMargin = NavigationController.NavigationBar.Frame.Height + UIApplication.SharedApplication.StatusBarFrame.Height + 10;
-            var controlHeight = 20;
-            var controlWidth = View.Bounds.Width - 20;
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
 
-            // Decimal degrees
-            _decimalDegreeslabel.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            _decimalDegreesUITextField.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            // DMS
-            _dmsLabel.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            _dmsUITextField.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            // UTM
-            _utmLabel.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            _utmUITextField.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            // USNG
-            _usngLabel.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            _usngUITextField.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            // Button
-            _recalculateButton.Frame = new CGRect(10, topMargin, controlWidth, controlHeight);
-            topMargin += controlHeight;
-            // MapView
-            _myMapView.Frame = new CGRect(0, topMargin, View.Bounds.Width, View.Bounds.Height - topMargin);
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            base.ViewDidLayoutSubviews();
+            UILabel decimalDegreesLabel = new UILabel();
+            decimalDegreesLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            decimalDegreesLabel.Text = "Decimal degrees:";
+
+            UILabel dmsLabel = new UILabel();
+            dmsLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            dmsLabel.Text = "Degrees, minutes, seconds:";
+
+            UILabel utmLabel = new UILabel();
+            utmLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            utmLabel.Text = "UTM:";
+
+            UILabel usngLabel = new UILabel();
+            usngLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            usngLabel.Text = "USNG:";
+
+            _ddEntry = new UITextField();
+            _dmsEntry = new UITextField();
+            _utmEntry = new UITextField();
+            _usngEntry = new UITextField();
+
+            // Uniformly configure the entries.
+            foreach (UITextField tf in new[] {_ddEntry, _dmsEntry, _utmEntry, _usngEntry})
+            {
+                tf.TranslatesAutoresizingMaskIntoConstraints = false;
+                tf.BorderStyle = UITextBorderStyle.RoundedRect;
+            }
+
+            UIStackView formView = new UIStackView(new UIView[]
+                {decimalDegreesLabel, _ddEntry, dmsLabel, _dmsEntry, utmLabel, _utmEntry, usngLabel, _usngEntry});
+            formView.TranslatesAutoresizingMaskIntoConstraints = false;
+            formView.Axis = UILayoutConstraintAxis.Vertical;
+            formView.Spacing = 4;
+            formView.LayoutMarginsRelativeArrangement = true;
+            formView.LayoutMargins = new UIEdgeInsets(8, 8, 8, 8);
+            formView.SetContentHuggingPriority((float) UILayoutPriority.DefaultHigh, UILayoutConstraintAxis.Vertical);
+
+            // Add the views.
+            View.AddSubviews(formView, _myMapView);
+
+            // Lay out the views.
+            _portraitConstraints = new[]
+            {
+                formView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                formView.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor),
+                formView.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor),
+                formView.BottomAnchor.ConstraintEqualTo(_myMapView.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor)
+            };
+            _landscapeConstraints = new[]
+            {
+                formView.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor),
+                formView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                formView.TrailingAnchor.ConstraintEqualTo(_myMapView.LeadingAnchor),
+                formView.WidthAnchor.ConstraintGreaterThanOrEqualTo(280),
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor)
+            };
+
+            ApplyConstraints();
+        }
+
+        private bool HandleTextField(UITextField textField)
+        {
+            textField.ResignFirstResponder();
+            // Recalculate fields.
+            RecalculateFields(textField);
+            return true;
+        }
+
+        public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
+        {
+            base.TraitCollectionDidChange(previousTraitCollection);
+
+            // Deactivate old constraints.
+            NSLayoutConstraint.DeactivateConstraints(_portraitConstraints);
+            NSLayoutConstraint.DeactivateConstraints(_landscapeConstraints);
+
+            // Apply new constraints.
+            ApplyConstraints();
+        }
+
+        private void ApplyConstraints()
+        {
+            if (View.TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact)
+            {
+                // Update layout for landscape.
+                NSLayoutConstraint.ActivateConstraints(_landscapeConstraints);
+            }
+            else
+            {
+                // Update layout for portrait.
+                NSLayoutConstraint.ActivateConstraints(_portraitConstraints);
+            }
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _myMapView.GeoViewTapped += MyMapView_GeoViewTapped;
+            _utmEntry.EditingDidBegin += InputValueChanged;
+            _dmsEntry.EditingDidBegin += InputValueChanged;
+            _ddEntry.EditingDidBegin += InputValueChanged;
+            _usngEntry.EditingDidBegin += InputValueChanged;
+            foreach (UITextField tf in new[] {_ddEntry, _dmsEntry, _utmEntry, _usngEntry})
+            {
+                tf.ShouldReturn += HandleTextField;
+            }
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _myMapView.GeoViewTapped -= MyMapView_GeoViewTapped;
+            _utmEntry.EditingDidBegin -= InputValueChanged;
+            _dmsEntry.EditingDidBegin -= InputValueChanged;
+            _ddEntry.EditingDidBegin -= InputValueChanged;
+            _usngEntry.EditingDidBegin -= InputValueChanged;
+            foreach (UITextField tf in new[] {_ddEntry, _dmsEntry, _utmEntry, _usngEntry})
+            {
+                tf.ShouldReturn -= HandleTextField;
+            }
         }
     }
 }

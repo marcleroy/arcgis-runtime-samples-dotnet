@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,15 +11,19 @@ using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.SetInitialMapArea
+namespace ArcGISRuntime.Samples.SetInitialMapArea
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map initial extent",
+        category: "Map",
+        description: "Display the map at an initial viewpoint representing a bounding geometry.",
+        instructions: "When the sample loads, note that the map view opens at the initial viewpoint defined on the map.",
+        tags: new[] { "envelope", "extent", "initial", "viewpoint", "zoom" })]
     public partial class SetInitialMapArea : ContentPage
     {
         public SetInitialMapArea()
         {
             InitializeComponent ();
-
-            Title = "Set initial map area";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();

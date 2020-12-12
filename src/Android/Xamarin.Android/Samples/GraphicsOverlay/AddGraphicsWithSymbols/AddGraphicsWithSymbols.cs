@@ -17,13 +17,19 @@ using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using System.Drawing;
 
-namespace ArcGISRuntimeXamarin.Samples.AddGraphicsWithSymbols
+namespace ArcGISRuntime.Samples.AddGraphicsWithSymbols
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Add graphics with symbols",
+        category: "GraphicsOverlay",
+        description: "Use a symbol style to display a graphic on a graphics overlay.",
+        instructions: "Observe the graphics on the map.",
+        tags: new[] { "SimpleFillSymbol", "SimpleLineSymbol", "SimpleMarkerSymbol" })]
     public class AddGraphicsWithSymbols : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Create the graphics overlay
         private readonly GraphicsOverlay _overlay = new GraphicsOverlay();
@@ -185,9 +191,10 @@ namespace ArcGISRuntimeXamarin.Samples.AddGraphicsWithSymbols
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

@@ -7,86 +7,92 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System.Drawing;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System.Drawing;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.RenderSimpleMarkers
+namespace ArcGISRuntime.Samples.RenderSimpleMarkers
 {
     [Register("RenderSimpleMarkers")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Simple marker symbol",
+        category: "Symbology",
+        description: "Show a simple marker symbol on a map.",
+        instructions: "The sample loads with a predefined simple marker symbol, set as a red circle.",
+        tags: new[] { "SimpleMarkerSymbol", "symbol" })]
     public class RenderSimpleMarkers : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public RenderSimpleMarkers()
         {
             Title = "Render simple markers";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
-        }
-
         private void Initialize()
         {
-            // Create new Map with basemap
+            // Create new Map with imagery basemap.
             Map myMap = new Map(Basemap.CreateImagery());
 
-            // Create initial map location and reuse the location for graphic
+            // Create initial map location and reuse the location for graphic.
             MapPoint centralLocation = new MapPoint(-226773, 6550477, SpatialReferences.WebMercator);
-            Viewpoint initialViewpoint = new Viewpoint(centralLocation, 7500);
 
-            // Set initial viewpoint
-            myMap.InitialViewpoint = initialViewpoint;
+            // Set initial viewpoint.
+            myMap.InitialViewpoint = new Viewpoint(centralLocation, 7500);
 
-            // Provide used Map to the MapView
+            // Provide used Map to the MapView.
             _myMapView.Map = myMap;
 
-            // Create overlay to where graphics are shown
+            // Create overlay to where graphics are shown.
             GraphicsOverlay overlay = new GraphicsOverlay();
 
-            // Add created overlay to the MapView
+            // Add created overlay to the MapView.
             _myMapView.GraphicsOverlays.Add(overlay);
 
-            // Create a simple marker symbol
-            SimpleMarkerSymbol simpleSymbol = new SimpleMarkerSymbol()
+            // Create a simple marker symbol.
+            SimpleMarkerSymbol simpleSymbol = new SimpleMarkerSymbol
             {
                 Color = Color.Red,
                 Size = 10,
                 Style = SimpleMarkerSymbolStyle.Circle
             };
 
-            // Add a new graphic with a central point that was created earlier
+            // Add a new graphic with a central point that was created earlier.
             Graphic graphicWithSymbol = new Graphic(centralLocation, simpleSymbol);
             overlay.Graphics.Add(graphicWithSymbol);
         }
 
-        private void CreateLayout()
+        public override void ViewDidLoad()
         {
-            // Add MapView to the page
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

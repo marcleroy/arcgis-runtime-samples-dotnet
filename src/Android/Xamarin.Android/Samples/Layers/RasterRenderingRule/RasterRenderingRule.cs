@@ -19,13 +19,19 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Collections.Generic;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
+namespace ArcGISRuntime.Samples.RasterRenderingRule
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster rendering rule",
+        category: "Layers",
+        description: "Display a raster on a map and apply different rendering rules to that raster.",
+        instructions: "Run the sample and use the drop-down menu at the top to select a rendering rule.",
+        tags: new[] { "raster", "rendering rules", "visualization" })]
     public class RasterRenderingRule : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Create a empty read-only list for the various rendering rules of the image service raster
         private IReadOnlyList<RenderingRuleInfo> _myReadOnlyListRenderRuleInfos;
@@ -53,57 +59,66 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
         private async void Initialize()
         {
             // Assign a new map to the MapView
-            _myMapView.Map = new Map();
+            _myMapView.Map = new Map
+            {
 
-            // Set the basemap to Streets
-            _myMapView.Map.Basemap = Basemap.CreateStreets();
+                // Set the basemap to Streets
+                Basemap = Basemap.CreateStreets()
+            };
 
             // Create a new image service raster from the Uri
             ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri);
 
-            // Load the image service raster
-            await myImageServiceRaster.LoadAsync();
-
-            // Get the ArcGIS image service info (metadata) from the image service raster
-            ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
-
-            // Get the full extent envelope of the image service raster (the Charlotte, NC area)
-            Envelope myEnvelope = myArcGISImageServiceInfo.FullExtent;
-
-            // Define a new view point from the full extent envelope
-            Viewpoint myViewPoint = new Viewpoint(myEnvelope);
-
-            // Zoom to the area of the full extent envelope of the image service raster
-            await _myMapView.SetViewpointAsync(myViewPoint);
-
-            // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster
-            _myReadOnlyListRenderRuleInfos = myArcGISImageServiceInfo.RenderingRuleInfos;
-
-            // Loop through each rendering rule info
-            foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+            try
             {
-                // Get the name of the rendering rule info
-                string myRenderingRuleName = myRenderingRuleInfo.Name;
+                // Load the image service raster
+                await myImageServiceRaster.LoadAsync();
 
-                // Add the name of the rendering rule info to the list of names
-                _names.Add(myRenderingRuleName);
+                // Get the ArcGIS image service info (metadata) from the image service raster
+                ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
+
+                // Get the full extent envelope of the image service raster (the Charlotte, NC area)
+                Envelope myEnvelope = myArcGISImageServiceInfo.FullExtent;
+
+                // Define a new view point from the full extent envelope
+                Viewpoint myViewPoint = new Viewpoint(myEnvelope);
+
+                // Zoom to the area of the full extent envelope of the image service raster
+                await _myMapView.SetViewpointAsync(myViewPoint);
+
+                // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster
+                _myReadOnlyListRenderRuleInfos = myArcGISImageServiceInfo.RenderingRuleInfos;
+
+                // Loop through each rendering rule info
+                foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+                {
+                    // Get the name of the rendering rule info
+                    string myRenderingRuleName = myRenderingRuleInfo.Name;
+
+                    // Add the name of the rendering rule info to the list of names
+                    _names.Add(myRenderingRuleName);
+                }
+
+                // Invoke the button for the user to change the rendering rule of the image service raster
+                OnChangeRenderingRuleClicked(_renderingRulesButton, null);
             }
-
-            // Invoke the button for the user to change the rendering rule of the image service raster
-            OnChangeRenderingRuleClicked(_renderingRulesButton, null);
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void OnChangeRenderingRuleClicked(object sender, EventArgs e)
         {
             // Get the rendering rule button
-            Button renderingRuleButton = sender as Button;
+            Button renderingRuleButton = (Button)sender;
 
             // Create menu to show the rendering rule options
             PopupMenu renderingRuleMenu = new PopupMenu(this, renderingRuleButton);
             renderingRuleMenu.MenuItemClick += OnChangeRenderingRuleMenuItemClicked;
 
             // Create menu options
-            foreach (String renderingRuleName in _names)
+            foreach (string renderingRuleName in _names)
             {
                 renderingRuleMenu.Menu.Add(renderingRuleName);
             }
@@ -115,7 +130,7 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
         private void OnChangeRenderingRuleMenuItemClicked(object sender, PopupMenu.MenuItemClickEventArgs e)
         {
             // Get the rendering rule from the selected item
-            String selectedRenderingRuleType = e.Item.TitleCondensedFormatted.ToString();
+            string selectedRenderingRuleType = e.Item.TitleCondensedFormatted.ToString();
 
             // Loop through each rendering rule info in the image service raster
             foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
@@ -130,10 +145,12 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
                     RenderingRule myRenderingRule = new RenderingRule(myRenderingRuleInfo);
 
                     // Create a new image service raster
-                    ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri);
+                    ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri)
+                    {
 
-                    // Set the image service raster's rendering rule to the rendering rule created earlier
-                    myImageServiceRaster.RenderingRule = myRenderingRule;
+                        // Set the image service raster's rendering rule to the rendering rule created earlier
+                        RenderingRule = myRenderingRule
+                    };
 
                     // Create a new raster layer from the image service raster
                     RasterLayer myRasterLayer = new RasterLayer(myImageServiceRaster);
@@ -150,14 +167,17 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
             LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create button to show possible rendering rule options
-            _renderingRulesButton = new Button(this);
-            _renderingRulesButton.Text = "Change Rendering Rule";
+            _renderingRulesButton = new Button(this)
+            {
+                Text = "Change Rendering Rule"
+            };
             _renderingRulesButton.Click += OnChangeRenderingRuleClicked;
 
             // Add rendering rule button to the layout
             layout.AddView(_renderingRulesButton);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

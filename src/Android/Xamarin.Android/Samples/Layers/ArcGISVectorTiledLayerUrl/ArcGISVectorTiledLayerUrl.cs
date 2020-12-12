@@ -1,10 +1,10 @@
-// Copyright 2016 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using Android.App;
@@ -14,31 +14,31 @@ using Android.Widget;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISVectorTiledLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISVectorTiledLayerUrl
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS vector tiled layer URL",
+        category: "Layers",
+        description: "Load an ArcGIS Vector Tiled Layer from a URL.",
+        instructions: "Use the drop down menu to load different vector tile basemaps.",
+        tags: new[] { "tiles", "vector", "vector basemap", "vector tiled layer", "vector tiles" })]
     public class ArcGISVectorTiledLayerUrl : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
-        private string _navigationUrl = "https://www.arcgis.com/home/item.html?id=63c47b7177f946b49902c24129b87252";
-        private string _streetUrl = "https://www.arcgis.com/home/item.html?id=de26a3cf4cc9451298ea173c4b324736";
-        private string _nightUrl = "https://www.arcgis.com/home/item.html?id=86f556a2d1fd468181855a35e344567f";
-        private string _darkGrayUrl = "https://www.arcgis.com/home/item.html?id=5e9b3685f4c24d8781073dd928ebda50";
-
-        private string _vectorTiledLayerUrl;
-        private ArcGISVectorTiledLayer _vectorTiledLayer;
-
-        // String array to store some vector layer names.
-        private string[] _vectorLayerNames = new string[]
+        // Dictionary associates layer names with URIs
+        private readonly Dictionary<string, Uri> _layerUrls = new Dictionary<string, Uri>()
         {
-            "Dark gray",
-            "Streets",
-            "Night",
-            "Navigation"
+            {"Mid-Century", new Uri("https://www.arcgis.com/home/item.html?id=7675d44bb1e4428aa2c30a9b68f97822")},
+            {"Colored Pencil", new Uri("https://www.arcgis.com/home/item.html?id=4cf7e1fb9f254dcda9c8fbadb15cf0f8")},
+            {"Newspaper", new Uri("https://www.arcgis.com/home/item.html?id=dfb04de5f3144a80bc3f9f336228d24a")},
+            {"Nova", new Uri("https://www.arcgis.com/home/item.html?id=75f4dfdff19e445395653121a95a85db")},
+            {"World Street Map (Night)", new Uri("https://www.arcgis.com/home/item.html?id=86f556a2d1fd468181855a35e344567f")}
         };
 
         protected override void OnCreate(Bundle bundle)
@@ -47,18 +47,19 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISVectorTiledLayerUrl
 
             Title = "ArcGIS vector tiled Layer";
 
-            // Create the UI, setup the control references and execute initialization 
+            // Create the UI, setup the control references and execute initialization
             CreateLayout();
             Initialize();
         }
 
         private void Initialize()
         {
-            // Create a new ArcGISVectorTiledLayer with the navigation service Url
-            _vectorTiledLayer = new ArcGISVectorTiledLayer(new Uri(_navigationUrl));
+            // Create a new ArcGISVectorTiledLayer with the navigation service URL
+            ArcGISVectorTiledLayer vectorTiledLayer = new ArcGISVectorTiledLayer(_layerUrls.Values.First());
 
             // Create new Map with basemap
-            Map myMap = new Map(new Basemap(_vectorTiledLayer));
+            Map myMap = new Map();
+            myMap.OperationalLayers.Add(vectorTiledLayer);
 
             // Provide used Map to the MapView
             _myMapView.Map = myMap;
@@ -66,15 +67,17 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISVectorTiledLayerUrl
 
         private void OnVectorLayersClicked(object sender, EventArgs e)
         {
-            var button = sender as Button;
+            Button button = (Button)sender;
 
             // Create menu to show options
-            var menu = new PopupMenu(this, button);
+            PopupMenu menu = new PopupMenu(this, button);
             menu.MenuItemClick += OnVectorLayersMenuItemClicked;
 
             // Create menu options
-            foreach (var vectorLayerName in _vectorLayerNames)
+            foreach (string vectorLayerName in _layerUrls.Keys)
+            {
                 menu.Menu.Add(vectorLayerName);
+            }
 
             // Show menu in the view
             menu.Show();
@@ -83,52 +86,33 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISVectorTiledLayerUrl
         private void OnVectorLayersMenuItemClicked(object sender, PopupMenu.MenuItemClickEventArgs e)
         {
             // Get title from the selected item
-            var selected = e.Item.TitleCondensedFormatted.ToString();
+            string selected = e.Item.TitleCondensedFormatted.ToString();
 
-            // Get index that is used to get the selected url
-            var selectedIndex = _vectorLayerNames.ToList().IndexOf(selected);
+            // Create new ArcGISVectorTiled layer with the selected service Url
+            ArcGISVectorTiledLayer vectorTiledLayer = new ArcGISVectorTiledLayer(_layerUrls[selected]);
 
-            switch (selectedIndex)
-            {
-                case 0:
-                    _vectorTiledLayerUrl = _darkGrayUrl;
-                    break;
-
-                case 1:
-                    _vectorTiledLayerUrl = _streetUrl;
-                    break;
-
-                case 2:
-                    _vectorTiledLayerUrl = _nightUrl;
-                    break;
-
-                case 3:
-                    _vectorTiledLayerUrl = _navigationUrl;
-                    break;
-            }
-
-            // Create new ArcGISVectorTiled layer with the selected service Url 
-            _vectorTiledLayer = new ArcGISVectorTiledLayer(new Uri(_vectorTiledLayerUrl));
-
-            // Create a new map with a basemap that was selected. Assign this to the mapview's map 
-            _myMapView.Map = new Map(new Basemap(_vectorTiledLayer));
+            // Create a new map with a basemap that was selected. Assign this to the mapview's map
+            _myMapView.Map.OperationalLayers.Clear();
+            _myMapView.Map.OperationalLayers.Add(vectorTiledLayer);
         }
 
- 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Create button to show possible options
-            var button = new Button(this);
-            button.Text = "Select layer";
+            // Create button to show options
+            Button button = new Button(this)
+            {
+                Text = "Select layer"
+            };
             button.Click += OnVectorLayersClicked;
 
             // Add button to the layout
             layout.AddView(button);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

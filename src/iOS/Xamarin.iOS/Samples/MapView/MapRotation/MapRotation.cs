@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,68 +7,115 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.MapRotation
+namespace ArcGISRuntime.Samples.MapRotation
 {
     [Register("MapRotation")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map rotation",
+        category: "MapView",
+        description: "Rotate a map.",
+        instructions: "Use the slider to rotate the map.",
+        tags: new[] { "rotate", "rotation", "viewpoint" })]
     public class MapRotation : UIViewController
     {
+        // Hold references to UI controls.
         private MapView _myMapView;
-        private UIToolbar _toolbar = new UIToolbar();
-        private UILabel _rotationLabel = new UILabel();
-
-        private UISlider _rotationSlider = new UISlider()
-        {
-            MinValue = 0,
-            MaxValue = 360
-        };
+        private UILabel _rotationLabel;
+        private UISlider _rotationSlider;
 
         public MapRotation()
         {
             Title = "Map rotation";
         }
 
+        private void Initialize()
+        {
+            // Show a streets basemap.
+            _myMapView.Map = new Map(Basemap.CreateStreets());
+        }
+
+        private void RotationSlider_Changed(object sender, EventArgs e)
+        {
+            _myMapView.SetViewpointRotationAsync(_rotationSlider.Value);
+            _rotationLabel.Text = $"{_rotationSlider.Value:0}°";
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create a new MapView control and provide its location coordinates on the frame
-            _myMapView = new MapView();
-
-            // Create a new Map instance with the basemap
-            var myBasemap = Basemap.CreateStreets();
-            Map myMap = new Map(myBasemap);
-
-            // Assign the Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Create the label to display the MapView rotation value
-            _rotationLabel.Text = string.Format("{0:0}°", _myMapView.MapRotation);
-
-            // Configure the slider
-            _rotationSlider.ValueChanged += (Object s, EventArgs e) =>
-            {
-                _myMapView.SetViewpointRotationAsync(_rotationSlider.Value);
-                _rotationLabel.Text = string.Format("{0:0}°", _rotationSlider.Value);
-            };
-
-            View.AddSubviews(_myMapView, _toolbar, _rotationLabel, _rotationSlider);
+            Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-            // Setup the visual frame for the Toolbar
-            _toolbar.Frame = new CoreGraphics.CGRect(0, View.Bounds.Height - 50, View.Bounds.Width, 50);
-            _rotationSlider.Frame = new CoreGraphics.CGRect(10, _toolbar.Frame.Top + 10, View.Bounds.Width - 50 - 20, _toolbar.Frame.Height - 20);
-            _rotationLabel.Frame = new CoreGraphics.CGRect(View.Bounds.Width - 50 - 10, _toolbar.Frame.Top + 10, 50, _toolbar.Frame.Height - 20);
-            base.ViewDidLayoutSubviews();
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            _rotationSlider = new UISlider
+            {
+                MinValue = 0,
+                MaxValue = 360,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            _rotationLabel = new UILabel
+            {
+                Text = "0°",
+                TextAlignment = UITextAlignment.Center,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                new UIBarButtonItem(_rotationLabel),
+                new UIBarButtonItem(UIBarButtonSystemItem.FixedSpace) {Width = 0},
+                new UIBarButtonItem(_rotationSlider)
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _rotationLabel.WidthAnchor.ConstraintEqualTo(64),
+
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor)
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _rotationSlider.ValueChanged += RotationSlider_Changed;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _rotationSlider.ValueChanged -= RotationSlider_Changed;
         }
     }
 }

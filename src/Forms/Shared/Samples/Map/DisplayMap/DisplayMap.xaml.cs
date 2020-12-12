@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -10,15 +10,19 @@
 using Esri.ArcGISRuntime.Mapping;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayMap
+namespace ArcGISRuntime.Samples.DisplayMap
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display map",
+        category: "Map",
+        description: "Display a map with an imagery basemap.",
+        instructions: "Run the sample to view the map. Pan and zoom to navigate the map.",
+        tags: new[] { "basemap", "map" })]
     public partial class DisplayMap : ContentPage
     {
         public DisplayMap()
         {
             InitializeComponent();
-
-            Title = "Display a map";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();

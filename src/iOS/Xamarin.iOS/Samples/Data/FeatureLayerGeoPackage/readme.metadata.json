@@ -1,0 +1,37 @@
+{
+    "category": "Data",
+    "description": "Display features from a local GeoPackage.",
+    "formal_name": "FeatureLayerGeoPackage",
+    "ignore": false,
+    "images": [
+        "FeatureLayerGeoPackage.jpg"
+    ],
+    "keywords": [
+        "OGC",
+        "feature table",
+        "geopackage",
+        "gpkg",
+        "package",
+        "standards"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.iOS": "100.9.0"
+    },
+    "offline_data": [
+        "68ec42517cdd439e81b036210483e8e7"
+    ],
+    "redirect_from": [
+        "/net/latest/ios/sample-code/featurelayergeopackage.htm"
+    ],
+    "relevant_apis": [
+        "FeatureLayer",
+        "GeoPackage",
+        "GeoPackageFeatureTable",
+        "Map"
+    ],
+    "snippets": [
+        "FeatureLayerGeoPackage.cs"
+    ],
+    "title": "Feature layer (GeoPackage)"
+}

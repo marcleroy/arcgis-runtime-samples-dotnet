@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,15 +11,19 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISTiledLayerUrl
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS tiled layer",
+        category: "Layers",
+        description: "Load an ArcGIS tiled layer from a URL.",
+        instructions: "Launch the app to view the \"World Topographic Map\" tile layer as the basemap. ",
+        tags: new[] { "basemap", "layers", "raster tiles", "tiled layer", "visualization" })]
     public partial class ArcGISTiledLayerUrl : ContentPage
     {
         public ArcGISTiledLayerUrl ()
         {
             InitializeComponent ();
-
-            Title = "ArcGIS tiled layer (URL)";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -31,7 +35,7 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
             Map myMap = new Map();
 
             // Create uri to the tiled service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer");
 
             // Create new tiled layer from the url

@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,8 +12,14 @@ using System;
 using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ChangeSublayerVisibility
+namespace ArcGISRuntime.Samples.ChangeSublayerVisibility
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map image layer sublayer visibility",
+        category: "Layers",
+        description: "Change the visibility of sublayers.",
+        instructions: "Each sublayer has a check box which can be used to toggle the visibility of the sublayer.",
+        tags: new[] { "layers", "sublayers", "visibility" })]
     public partial class ChangeSublayerVisibility : ContentPage
     {
         private ArcGISMapImageLayer _imageLayer;
@@ -21,8 +27,6 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeSublayerVisibility
         public ChangeSublayerVisibility()
         {
             InitializeComponent();
-
-            Title = "Change sublayer visibility";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -34,7 +38,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeSublayerVisibility
             Map myMap = new Map();
 
             // Create uri to the map image layer
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer");
 
             // Create new image layer from the url
@@ -52,57 +56,65 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeSublayerVisibility
 
         private async void OnSublayersClicked(object sender, EventArgs e)
         {
-            // Make sure that layer and it's sublayers are loaded
-            // If layer is already loaded, this returns directly
-            await _imageLayer.LoadAsync();
-
-            // Create layout for sublayers page
-            // Create root layout
-            var layout = new StackLayout();
-
-            // Create list for layers
-            var sublayersTableView = new TableView();
-
-            // Create section for basemaps sublayers
-            var sublayersSection = new TableSection(_imageLayer.Name);
-
-            // Create cells for each of the sublayers
-            foreach (ArcGISSublayer sublayer in _imageLayer.Sublayers)
+            try
             {
-                // Using switch cells that provides on/off functionality
-                SwitchCell cell = new SwitchCell()
+                // Make sure that layer and it's sublayers are loaded
+                // If layer is already loaded, this returns directly
+                await _imageLayer.LoadAsync();
+
+                // Create layout for sublayers page
+                // Create root layout
+                StackLayout layout = new StackLayout();
+
+                // Create list for layers
+                TableView sublayersTableView = new TableView();
+
+                // Create section for basemaps sublayers
+                TableSection sublayersSection = new TableSection(_imageLayer.Name);
+
+                // Create cells for each of the sublayers
+                foreach (ArcGISSublayer sublayer in _imageLayer.Sublayers)
                 {
-                    Text = sublayer.Name,
-                    On = sublayer.IsVisible
-                };
+                    // Using switch cells that provides on/off functionality
+                    SwitchCell cell = new SwitchCell()
+                    {
+                        Text = sublayer.Name,
+                        On = sublayer.IsVisible
+                    };
 
-                // Hook into the On/Off changed event
-                cell.OnChanged += OnCellOnOffChanged;
+                    // Hook into the On/Off changed event
+                    cell.OnChanged += OnCellOnOffChanged;
                 
-                // Add cell into the table view
-                sublayersSection.Add(cell);
-            }
+                    // Add cell into the table view
+                    sublayersSection.Add(cell);
+                }
 
-            // Add section to the table view
-            sublayersTableView.Root.Add(sublayersSection);
+                // Add section to the table view
+                sublayersTableView.Root.Add(sublayersSection);
 
-            // Add table to the root layout
-            layout.Children.Add(sublayersTableView);
+                // Add table to the root layout
+                layout.Children.Add(sublayersTableView);
 
-            // Create internal page for the navigation page
-            var sublayersPage = new ContentPage()
-            {
-                Content = layout,
-                Title = "Sublayers"
-            };
+                // Create internal page for the navigation page
+                ContentPage sublayersPage = new ContentPage()
+                {
+                    Content = layout,
+                    Title = "Sublayers"
+                };
                         
-            // Navigate to the sublayers page
-            await Navigation.PushAsync(sublayersPage);
+                // Navigate to the sublayers page
+                await Navigation.PushAsync(sublayersPage);
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+
+            }
         }
 
         private void OnCellOnOffChanged(object sender, ToggledEventArgs e)
         {
-            var cell = sender as SwitchCell;
+            SwitchCell cell = (SwitchCell)sender;
            
             // Find the layer from the image layer
             ArcGISSublayer sublayer = _imageLayer.Sublayers.First(x => x.Name == cell.Text);

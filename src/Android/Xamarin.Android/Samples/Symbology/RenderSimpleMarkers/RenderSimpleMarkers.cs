@@ -17,13 +17,19 @@ using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using System.Drawing;
 
-namespace ArcGISRuntimeXamarin.Samples.RenderSimpleMarkers
+namespace ArcGISRuntime.Samples.RenderSimpleMarkers
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Simple marker symbol",
+        category: "Symbology",
+        description: "Show a simple marker symbol on a map.",
+        instructions: "The sample loads with a predefined simple marker symbol, set as a red circle.",
+        tags: new[] { "SimpleMarkerSymbol", "symbol" })]
     public class RenderSimpleMarkers : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -72,9 +78,10 @@ namespace ArcGISRuntimeXamarin.Samples.RenderSimpleMarkers
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

@@ -1,14 +1,12 @@
-﻿// Copyright 2016 Esri.
+﻿// Copyright 2019 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntime.Samples.Managers;
-using ArcGISRuntime.Samples.Models;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -23,11 +21,6 @@ namespace ArcGISRuntime.UWP.Viewer
 {
     sealed partial class App
     {
-        // Default to use CSharp assembly for samples
-        // NOTE :
-        // Change this to Language.VBNet to run VB samples
-        private const Language SamplesLanguageUsed = Language.CSharp;
-
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -40,21 +33,20 @@ namespace ArcGISRuntime.UWP.Viewer
             UnhandledException += App_UnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
-            ApplicationManager.Current.Initialize(SamplesLanguageUsed);
+            // Safeguard against the user changing theme midway through using the applicaiton.
+            Application.Current.RequestedTheme = Application.Current.RequestedTheme;
         }
 
         private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-            var errorMessage = e.Exception.ToString();
-            Debug.WriteLine(errorMessage);
-            var message = new MessageDialog(errorMessage, "An error occurred").ShowAsync();
+            Debug.WriteLine(e.Exception);
         }
 
-        private void App_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        private async void App_UnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
         {
             var errorMessage = e.Exception.ToString();
             Debug.WriteLine(errorMessage);
-            var message = new MessageDialog(errorMessage, "An error occurred").ShowAsync();
+            await new MessageDialog(errorMessage, "An error occurred").ShowAsync();
             e.Handled = true;
         }
 
@@ -65,9 +57,8 @@ namespace ArcGISRuntime.UWP.Viewer
         /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
-
 #if DEBUG
-            if (System.Diagnostics.Debugger.IsAttached)
+            if (Debugger.IsAttached)
             {
                 DebugSettings.EnableFrameRateCounter = true;
             }
@@ -109,7 +100,7 @@ namespace ArcGISRuntime.UWP.Viewer
         /// </summary>
         /// <param name="sender">The Frame which failed navigation</param>
         /// <param name="e">Details about the navigation failure</param>
-        void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
+        private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
         }

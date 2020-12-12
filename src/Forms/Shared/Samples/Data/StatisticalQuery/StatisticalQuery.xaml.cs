@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -15,8 +15,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
+namespace ArcGISRuntime.Samples.StatisticalQuery
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Statistical query",
+        category: "Data",
+        description: "Query a table to get aggregated statistics back for a specific field.",
+        instructions: "Pan and zoom to define the extent for the query. Use the 'Cities in current extent' checkbox to control whether the query only includes features in the visible extent. Use the 'Cities grater than 5M' checkbox to filter the results to only those cities with a population greater than 5 million people. Tap 'Get statistics' to perform the query. The query will return population-based statistics from the combined results of all features matching the query criteria.",
+        tags: new[] { "analysis", "average", "bounding geometry", "filter", "intersect", "maximum", "mean", "minimum", "query", "spatial query", "standard deviation", "statistics", "sum", "variance" })]
     public partial class StatisticalQuery : ContentPage
     {
         // URI for the world cities map service layer
@@ -28,8 +34,6 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
         public StatisticalQuery()
         {
             InitializeComponent();
-
-            Title = "Statistical query";
 
             // Initialize the base map and world cities feature layer
             Initialize();
@@ -100,12 +104,19 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
                 statQueryParams.WhereClause = "POP_RANK = 1";
             }
 
-            // Execute the statistical query with these parameters and await the results
-            StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
+            try
+            {
+                // Execute the statistical query with these parameters and await the results
+                StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
 
-            // Display results in the list box
-            StatResultsList.ItemsSource = statQueryResult.FirstOrDefault().Statistics.ToList();
-            ResultsGrid.IsVisible = true;
+                // Display results in the list box
+                StatResultsList.ItemsSource = statQueryResult.First().Statistics.Select(m =>$"{m.Key}:{m.Value}").ToList();
+                ResultsGrid.IsVisible = true;
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.Message, "OK");
+            }
         }
 
         private void HideResults(object sender, EventArgs e)

@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -10,15 +10,20 @@
 using Esri.ArcGISRuntime.Mapping;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.MapRotation
+namespace ArcGISRuntime.Samples.MapRotation
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map rotation",
+        category: "MapView",
+        description: "Rotate a map.",
+        instructions: "Use the slider to rotate the map.",
+        tags: new[] { "rotate", "rotation", "viewpoint" })]
     public partial class MapRotation : ContentPage
     {
         public MapRotation()
         {
             InitializeComponent();
 
-            Title = "Map rotation";
             Initialize();
         }
 
@@ -35,7 +40,7 @@ namespace ArcGISRuntimeXamarin.Samples.MapRotation
         private void MySlider_ValueChanged(object sender, ValueChangedEventArgs e)
         {
             // Display the rotation value in the Label formatted nicely with degree symbol.
-            MyLabel.Text = string.Format("{0:0}°", MySlider.Value);
+            MyLabel.Text = $"{MySlider.Value:0}°";
 
             // Set the MapView rotation to that of the Slider.
             MyMapView.SetViewpointRotationAsync(e.NewValue);

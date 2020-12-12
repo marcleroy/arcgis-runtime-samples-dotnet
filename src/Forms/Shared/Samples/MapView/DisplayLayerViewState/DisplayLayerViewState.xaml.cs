@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,10 +7,8 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
-using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
-using Esri.ArcGISRuntime.UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -18,8 +16,14 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
+namespace ArcGISRuntime.Samples.DisplayLayerViewState
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display layer view state",
+        category: "MapView",
+        description: "Determine if a layer is currently being viewed.",
+        instructions: "Pan and zoom around in the map. Each layer's view status is displayed. Notice that some layers configured with a min and max scale change to \"OutOfScale\" at certain scales.",
+        tags: new[] { "layer", "map", "status", "view" })]
     public partial class DisplayLayerViewState : ContentPage
     {
         // Reference to list of view status for each layer
@@ -28,8 +32,6 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
         public DisplayLayerViewState()
         {
             InitializeComponent();
-
-            Title = "Display layer view state";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -41,38 +43,44 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
             Map myMap = new Map();
 
             // Create the uri for the tiled layer
-            var tiledLayerUri = new Uri(
+            Uri tiledLayerUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/WorldTimeZones/MapServer");
 
             // Create a tiled layer using url
-            ArcGISTiledLayer tiledLayer = new ArcGISTiledLayer(tiledLayerUri);
-            tiledLayer.Name = "Tiled Layer";
+            ArcGISTiledLayer tiledLayer = new ArcGISTiledLayer(tiledLayerUri)
+            {
+                Name = "Tiled Layer"
+            };
 
             // Add the tiled layer to map
             myMap.OperationalLayers.Add(tiledLayer);
 
             // Create the uri for the ArcGISMapImage layer
-            var imageLayerUri = new Uri(
+            Uri imageLayerUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer");
 
             // Create ArcGISMapImage layer using a url
-            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(imageLayerUri);
-            imageLayer.Name = "Image Layer";
+            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(imageLayerUri)
+            {
+                Name = "Image Layer",
 
-            // Set the visible scale range for the image layer
-            imageLayer.MinScale = 40000000;
-            imageLayer.MaxScale = 2000000;
+                // Set the visible scale range for the image layer
+                MinScale = 40000000,
+                MaxScale = 2000000
+            };
 
             // Add the image layer to map
             myMap.OperationalLayers.Add(imageLayer);
 
             // Create Uri for feature layer
-            var featureLayerUri = new Uri(
+            Uri featureLayerUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Recreation/FeatureServer/0");
 
             // Create a feature layer using url
-            FeatureLayer myFeatureLayer = new FeatureLayer(featureLayerUri);
-            myFeatureLayer.Name = "Feature Layer";
+            FeatureLayer myFeatureLayer = new FeatureLayer(featureLayerUri)
+            {
+                Name = "Feature Layer"
+            };
 
             // Add the feature layer to map
             myMap.OperationalLayers.Add(myFeatureLayer);
@@ -103,7 +111,7 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
         {
             // State changed event is sent by a layer. In the list, find the layer which sends this event. 
             // If it exists then update the status
-            var model = _layerStatusModels.FirstOrDefault(l => l.LayerName == e.Layer.Name);
+            LayerStatusModel model = _layerStatusModels.FirstOrDefault(l => l.LayerName == e.Layer.Name);
             if (model != null)
                 model.LayerViewStatus = e.LayerViewState.Status.ToString();
         }

@@ -1,198 +1,114 @@
-﻿// Copyright 2016 Esri.
+﻿// Copyright 2020 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using ArcGISRuntime.Samples.Managers;
-using Esri.ArcGISRuntime.Mapping;
-using esriUI = Esri.ArcGISRuntime.UI;
-using Esri.ArcGISRuntime.UI.Controls;
+using Microsoft.Toolkit.Uwp.UI.Controls;
 using System;
-using System.IO;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.Foundation.Metadata;
-using Windows.Graphics.Imaging;
-using Windows.Storage;
 using Windows.System;
-using Windows.UI.Core;
-using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
-using Windows.UI.Xaml.Navigation;
 
 namespace ArcGISRuntime.UWP.Viewer
 {
-    public sealed partial class SamplePage 
+    public sealed partial class SamplePage
     {
         public SamplePage()
         {
             InitializeComponent();
 
-            HideStatusBar();
+            // Add events for cleaning up sample page when closed or opened.
+            Unloaded += SamplePage_Unloaded;
+            Loaded += SamplePage_Loaded;
 
-            // Get selected sample and set that as a DataContext
+            // Get selected sample and set that as the DataContext.
             DataContext = SampleManager.Current.SelectedSample;
 
-
-            if(SampleManager.Current.SelectedSample.RequiresOfflineData == true)
-            {
-                foreach (var id in SampleManager.Current.SelectedSample.DataItemIds)
-                {
-                    DataManager.GetData(id, SampleManager.Current.SelectedSample.Name);
-                }
-            }
-
-            // Set loaded sample to the UI 
+            // Load and show the sample.
             SampleContainer.Content = SampleManager.Current.SampleToControl(SampleManager.Current.SelectedSample);
-            LiveSample.IsChecked = true; // Default to the live sample view
+
+            // Change UI elements to be dark.
+            if (App.Current.RequestedTheme == ApplicationTheme.Dark)
+            {
+                DescriptionBlock.RequestedTheme = ElementTheme.Dark;
+            }
+
+            // Set file path for the readme.
+            string readmePath = System.IO.Path.Combine(SampleManager.Current.SelectedSample.Path, "Readme.md");
+            string readmeText = System.IO.File.ReadAllText(readmePath);
+
+            // Take off first line (the title header)
+            readmeText = readmeText.Substring(readmeText.IndexOf('\n') + 1);
+
+            // Fix image links from the old readme format.
+            readmeText = readmeText.Replace("<img src=\"", "![](").Replace("\" width=\"350\"/>", ")");
+
+            // Set readme in the mark down block.
+            DescriptionBlock.Text = readmeText;
+
+            // Remove the background from the mark down renderer.
+            DescriptionBlock.Background = new SolidColorBrush() { Opacity = 0 };
+
+            // Set the appropriate backgrounds.
+            ContentArea.RequestedTheme = SampleContainer.RequestedTheme;
+            ContentArea.Background = Tabs.Background;
+            DescriptionContainer.Background = (Brush)Application.Current.Resources["ApplicationPageBackgroundThemeBrush"];
+
+            // Load the source code files.
+            SourceCodeContainer.LoadSourceCode();
         }
 
-        // Check if the phone contract is available (mobile) and hide status bar if it is there
-        private async void HideStatusBar()
+        private void TabChanged(object sender, Windows.UI.Xaml.Controls.SelectionChangedEventArgs e)
         {
-            // If we have a phone contract, hide the status bar
-            if (ApiInformation.IsApiContractPresent("Windows.Phone.PhoneContract", 1, 0))
+            switch (((TabViewItem)Tabs.SelectedItem).Header.ToString())
             {
-                var statusBar = StatusBar.GetForCurrentView();
-                await statusBar.HideAsync();
+                case "Live Sample":
+                    SampleGrid.Visibility = Visibility.Visible;
+                    DescriptionContainer.Visibility = Visibility.Collapsed;
+                    SourceCodeContainer.Visibility = Visibility.Collapsed;
+                    break;
+
+                case "Description":
+                    SampleGrid.Visibility = Visibility.Collapsed;
+                    DescriptionContainer.Visibility = Visibility.Visible;
+                    SourceCodeContainer.Visibility = Visibility.Collapsed;
+                    break;
+
+                case "Source Code":
+                    SampleGrid.Visibility = Visibility.Collapsed;
+                    DescriptionContainer.Visibility = Visibility.Collapsed;
+                    SourceCodeContainer.Visibility = Visibility.Visible;
+                    break;
             }
         }
 
-        private void LiveSample_Checked(object sender, RoutedEventArgs e)
+        private void MarkDownBlock_ImageResolving(object sender, ImageResolvingEventArgs e)
         {
-            // Make sure that only one is  selected
-            if (Description.IsChecked.HasValue && Description.IsChecked.Value)
-                Description.IsChecked = false;
-
-            DescriptionContainer.Visibility = Visibility.Collapsed;
-            SampleContainer.Visibility = Visibility.Visible;
+            e.Image = new BitmapImage(new Uri(System.IO.Path.Combine(SampleManager.Current.SelectedSample.Path, e.Url)));
+            e.Handled = true;
         }
 
-        private void Description_Checked(object sender, RoutedEventArgs e)
+        private void SamplePage_Loaded(object sender, RoutedEventArgs e)
         {
-            // Make sure that only one is  selected
-            if (LiveSample.IsChecked.HasValue && LiveSample.IsChecked.Value)
-                LiveSample.IsChecked = false;
-
-            DescriptionContainer.Visibility = Visibility.Visible;
-            SampleContainer.Visibility = Visibility.Collapsed;
+            Tabs.SelectionChanged += TabChanged;
+            DescriptionBlock.ImageResolving += MarkDownBlock_ImageResolving;
         }
 
-        protected override void OnNavigatedTo(NavigationEventArgs e)
+        private void SamplePage_Unloaded(object sender, RoutedEventArgs e)
         {
-            base.OnNavigatedTo(e);
-#if DEBUG
-            Window.Current.CoreWindow.KeyDown += CoreWindow_KeyDown;
-#endif
+            Tabs.SelectionChanged -= TabChanged;
+            DescriptionBlock.ImageResolving -= MarkDownBlock_ImageResolving;
         }
 
-        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        private async void MarkdownText_LinkClicked(object sender, LinkClickedEventArgs e)
         {
-            base.OnNavigatedFrom(e);
-#if DEBUG
-            Window.Current.CoreWindow.KeyDown -= CoreWindow_KeyDown;
-#endif
-        }
-
-        private bool isResized = false;
-        private double originalHeight;
-        private double originalWidth;
-
-        private async void CoreWindow_KeyDown(global::Windows.UI.Core.CoreWindow sender, global::Windows.UI.Core.KeyEventArgs args)
-        {
-            var ctrl = Window.Current.CoreWindow.GetKeyState(VirtualKey.Control);
-            if (ctrl.HasFlag(CoreVirtualKeyStates.Down) && args.VirtualKey == VirtualKey.T)
-            {
-                if (!isResized)
-                {
-                    originalHeight = SampleContainer.ActualHeight;
-                    originalWidth = SampleContainer.ActualWidth;
-                    SampleContainer.Height = 600;
-                    SampleContainer.Width = 800;
-                    isResized = true;
-                    return;
-                }
-
-                var layoutRoot = new Grid();
-                var mapViewImage = new Image() { VerticalAlignment = VerticalAlignment.Top };
-                var uiImage = new Image();
-
-                // Create image from the non-map UI
-                var uiLayerImage = await CreateBitmapFromElement(SampleContainer.Content as UIElement);
-
-                // Find mapview from the sample. This expects that we use the same name in all samples
-                var mapview = (SampleContainer.Content as UserControl).FindName("MyMapView") as MapView;
-
-                // Retrieve general transform 
-                var tranform = mapview.TransformToVisual((SampleContainer.Content as UIElement));
-                // Retrieve the point value relative to the child.
-                var currentPoint = tranform.TransformPoint(new Point(0, 0));
-                // Setup the location where the mapview was in the view to respect the ui layout
-                mapViewImage.Margin = new Thickness(currentPoint.X, currentPoint.Y, 0, 0);
-
-                // Create snapshot from MapView
-                var exportImage = await mapview.ExportImageAsync();
-
-                // Set sources to the images and add them to the layout
-                uiImage.Source = uiLayerImage;
-                mapViewImage.Source = await esriUI.RuntimeImageExtensions.ToImageSourceAsync(exportImage);
-                layoutRoot.Children.Add(mapViewImage);
-                layoutRoot.Children.Add(uiImage);
-
-                // Add layout to the view
-                var sample = SampleContainer.Content;
-                SampleContainer.Content = layoutRoot;
-
-                // Wait that images are rendered
-                await Task.Delay(TimeSpan.FromSeconds(1));
-
-                // Save image to the disk
-                var combinedImage = await CreateBitmapFromElement(SampleContainer.Content as UIElement);
-                await SaveBitmapToFileAsync(combinedImage, SampleManager.Current.SelectedSample.SampleName);
-
-                // Reset view
-                SampleContainer.Content = sample;
-                SampleContainer.Height = originalHeight;
-                SampleContainer.Width = originalWidth;
-                isResized = false;
-            }
-        }
-
-        private static async Task<WriteableBitmap> CreateBitmapFromElement(UIElement element)
-        {
-            RenderTargetBitmap bitmap = new RenderTargetBitmap();
-            await bitmap.RenderAsync(element);
-            var pixelBuffer = await bitmap.GetPixelsAsync();
-            byte[] pixels = pixelBuffer.ToArray();
-            var writableBitmap = new WriteableBitmap((int)bitmap.PixelWidth, (int)bitmap.PixelHeight);
-            using (Stream stream = writableBitmap.PixelBuffer.AsStream())
-                await stream.WriteAsync(pixels, 0, pixels.Length);
-
-            return writableBitmap;
-        }
-
-        public static async Task SaveBitmapToFileAsync(WriteableBitmap image, string fileName = "screenshot")
-        {
-            // This stores image to  C:\Users\{user}\AppData\Local\Packages\b13e56ac-7531-429d-baf2-003653d989c1_cc4tdm0yr4r3t\LocalState\Screenshots 
-            StorageFolder pictureFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("Screenshots", CreationCollisionOption.OpenIfExists);
-            var file = await pictureFolder.CreateFileAsync(fileName + ".png", CreationCollisionOption.ReplaceExisting);
-
-            using (var stream = await file.OpenStreamForWriteAsync())
-            {
-                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream.AsRandomAccessStream());
-                var pixelStream = image.PixelBuffer.AsStream();
-                byte[] pixels = new byte[image.PixelBuffer.Length];
-                await pixelStream.ReadAsync(pixels, 0, pixels.Length);
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, (uint)image.PixelWidth, (uint)image.PixelHeight, 96, 96, pixels);
-                await encoder.FlushAsync();
-            }
+            await Launcher.LaunchUriAsync(new Uri(e.Link));
         }
     }
 }

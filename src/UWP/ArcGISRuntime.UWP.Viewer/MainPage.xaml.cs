@@ -1,59 +1,214 @@
-﻿// Copyright 2016 Esri.
+﻿// Copyright 2019 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using ArcGISRuntime.Samples.Managers;
-using ArcGISRuntime.Samples.Models;
-using ArcGISRuntime.UWP.Viewer.Dialogs;
+using ArcGISRuntime.Samples.Shared.Models;
+using Esri.ArcGISRuntime.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.Foundation.Metadata;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.UI.Core;
-using Windows.UI.ViewManagement;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
+using muxc = Microsoft.UI.Xaml.Controls;
 using Navigation = Windows.UI.Xaml.Navigation;
 
 namespace ArcGISRuntime.UWP.Viewer
 {
     public sealed partial class MainPage
     {
-        private readonly SystemNavigationManager _currentView = null;
+        private readonly SystemNavigationManager _currentView;
+        private bool _waitFlag;
 
         public MainPage()
         {
             InitializeComponent();
 
-            // Use required cache mode so we create only one page
+            // Use required cache mode so we create only one page.
             NavigationCacheMode = Navigation.NavigationCacheMode.Required;
-            // Get current view that provides access to the back button
+
+            // Get current view that provides access to the back button.
             _currentView = SystemNavigationManager.GetForCurrentView();
             _currentView.BackRequested += OnFrameNavigationRequested;
 
-            HideStatusBar();
-            
+            // Set the preffered minimum size of the window.
+            Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().SetPreferredMinSize(
+                new Windows.Foundation.Size(650, 650));
+
+            // Use required cache mode so we create only one page.
+            NavigationCacheMode = Navigation.NavigationCacheMode.Required;
+
+            // Get current view that provides access to the back button.
+            _currentView = SystemNavigationManager.GetForCurrentView();
+
             Initialize();
+
+            LoadTreeView(SampleManager.Current.FullTree);
+
+            // Set the ItemsSource for the grid from the first category.
+            SamplesGridView.ItemsSource = CategoriesTree.RootNodes[0].Children.ToList().Select(x => (SampleInfo)x.Content).ToList();
         }
 
-
-        // Check if the phone contract is available (mobile) and hide status bar if it is there
-        private async void HideStatusBar()
-        { 
-            // If we have a phone contract, hide the status bar
-            if (ApiInformation.IsApiContractPresent("Windows.Phone.PhoneContract", 1, 0))
+        private void LoadTreeView(SearchableTreeNode fullTree)
+        {
+            // This happens when there are no search results.
+            if (fullTree == null)
             {
-                var statusBar = StatusBar.GetForCurrentView();
-                await statusBar.HideAsync();
+                return;
             }
+            CategoriesTree.RootNodes.Clear();
+
+            muxc.TreeViewNode rootNode;
+
+            foreach (SearchableTreeNode category in fullTree.Items)
+            {
+                rootNode = new muxc.TreeViewNode() { Content = category };
+                category.Items.ForEach(info => rootNode.Children.Add(new muxc.TreeViewNode() { Content = info }));
+
+                CategoriesTree.RootNodes.Add(rootNode);
+            }
+        }
+
+        private void Initialize()
+        {
+            // Initialize manager that handles all the samples, this will load all the items from samples assembly and related files
+            SampleManager.Current.Initialize();
+
+            SearchBoxBorder.Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["ApplicationPageBackgroundThemeBrush"];
+        }
+
+        private async void OnSampleItemTapped(object sender, TappedRoutedEventArgs e)
+        {
+            SampleInfo selectedSample = (sender as FrameworkElement)?.DataContext as SampleInfo;
+            await SelectSample(selectedSample);
+        }
+
+        private async Task SelectSample(SampleInfo selectedSample)
+        {
+            // Call a function to clear existing credentials
+            ClearCredentials();
+
+            SampleManager.Current.SelectedSample = selectedSample;
+
+            try
+            {
+                if (selectedSample.OfflineDataItems != null)
+                {
+                    CancellationTokenSource cancellationSource = new CancellationTokenSource();
+
+                    // Show the waiting page
+                    SamplePageContainer.Content = new WaitPage(cancellationSource);
+                    SamplePageContainer.Visibility = Visibility.Visible;
+                    SampleSelectionGrid.Visibility = Visibility.Collapsed;
+
+                    // Wait for offline data to complete
+                    await DataManager.EnsureSampleDataPresent(selectedSample, cancellationSource.Token);
+                }
+
+                // Show the sample
+                SamplePageContainer.Content = new SamplePage();
+                SamplePageContainer.Visibility = Visibility.Visible;
+                SampleSelectionGrid.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception exception)
+            {
+                // Failed to create new instance of the sample.
+                SamplePageContainer.Visibility = Visibility.Collapsed;
+                SampleSelectionGrid.Visibility = Visibility.Visible;
+                CategoriesTree.SelectionMode = muxc.TreeViewSelectionMode.None;
+                await new MessageDialog(exception.Message).ShowAsync();
+                CategoriesTree.SelectionMode = muxc.TreeViewSelectionMode.Single;
+            }
+        }
+
+        private static void ClearCredentials()
+        {
+            // Clear credentials (if any) from previous sample runs
+            foreach (Credential cred in AuthenticationManager.Current.Credentials)
+            {
+                if (cred != null)
+                {
+                    AuthenticationManager.Current.RemoveCredential(cred);
+                }
+            }
+        }
+
+        private async void OnSearchQuerySubmitted(AutoSuggestBox searchBox, AutoSuggestBoxTextChangedEventArgs searchBoxQueryChangedEventArgs)
+        {
+            // Dont search again until wait from previous search expires.
+            if (_waitFlag) { return; }
+
+            _waitFlag = true;
+            await Task.Delay(200);
+            _waitFlag = false;
+
+            // Search using the sample manager
+            var categoriesList = SampleManager.Current.FullTree.Search(SampleSearchFunc);
+            if (categoriesList == null)
+            {
+                categoriesList = new SearchableTreeNode("Search", new[] { new SearchableTreeNode("No results", new List<object>()) });
+            }
+
+            // Load the tree of the current categories.
+            LoadTreeView(categoriesList);
+
+            // Check if there are search results.
+            if (CategoriesTree.RootNodes.Any())
+            {
+                // Set the items source of the grid to the first category from the search.
+                SamplesGridView.ItemsSource = CategoriesTree.RootNodes[0].Children.ToList().Select(x => (SampleInfo)x.Content).ToList();
+
+                if (!String.IsNullOrWhiteSpace(searchBox.Text))
+                {
+                    foreach (muxc.TreeViewNode node in CategoriesTree.RootNodes)
+                    {
+                        node.IsExpanded = true;
+                    }
+                }
+            }
+
+            // Switch to the sample selection grid.
+            SamplePageContainer.Visibility = Visibility.Collapsed;
+            SamplePageContainer.Content = null;
+            SampleSelectionGrid.Visibility = Visibility.Visible;
+        }
+
+        private bool SampleSearchFunc(SampleInfo sample)
+        {
+            return SampleManager.Current.SampleSearchFunc(sample, SearchBox.Text);
+        }
+
+        private async void CategoriesTree_ItemInvoked(muxc.TreeView sender, muxc.TreeViewItemInvokedEventArgs e)
+        {
+            muxc.TreeViewNode selected = (muxc.TreeViewNode)e.InvokedItem;
+
+            if (selected.Content.GetType() == typeof(SearchableTreeNode))
+            {
+                SamplePageContainer.Visibility = Visibility.Collapsed;
+                SamplePageContainer.Content = null;
+                SampleSelectionGrid.Visibility = Visibility.Visible;
+                List<SampleInfo> samples = selected.Children.ToList().Select(x => (SampleInfo)x.Content).ToList();
+                SamplesGridView.ItemsSource = samples;
+            }
+            else if (selected.Content.GetType() == typeof(SampleInfo))
+            {
+                await SelectSample((SampleInfo)selected.Content);
+            }
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            Frame.Navigate(typeof(SettingsWindow));
         }
 
         private void OnFrameNavigationRequested(object sender, BackRequestedEventArgs e)
@@ -68,163 +223,34 @@ namespace ArcGISRuntime.UWP.Viewer
 
         private void OnFrameNavigated(object sender, Navigation.NavigationEventArgs e)
         {
-            _currentView.AppViewBackButtonVisibility = AppViewBackButtonVisibility.Visible;
-        }
-
-        private void HideLoadingIndication()
-        {
-            LoadingIndicatorArea.Visibility = Visibility.Collapsed;
-            LoadingProgressRing.IsActive = false;
-        }
-
-        private void ShowLoadingIndication()
-        {
-            LoadingIndicatorArea.Visibility = Visibility.Visible;
-            LoadingProgressRing.IsActive = true;
-        }
-
-        protected override void OnNavigatedTo(Navigation.NavigationEventArgs e)
-        {
-            // Force GC to get invoke full clean up when ever
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            base.OnNavigatedTo(e);
-        }
-
-        private async void Initialize()
-        {
-            // Initialize manager that handles all the samples, this will load all the items from samples assembly and related files
-            await SampleManager.Current.InitializeAsync(ApplicationManager.Current.SelectedLanguage);
-
-            // Create categories list. Also add Featured there as a single category.
-            var categoriesList = SampleManager.Current.GetSamplesInCategories();
-
-            var collectedFeaturedSamplesList = new List<object>();
-            var featuredSampleList = SampleManager.Current.GetFeaturedSamples();
-
-            // Collect all featured samples from the samples list and construct featured category
-            foreach (var featured in featuredSampleList)
+            if (Frame.CanGoBack)
             {
-                foreach (var category in categoriesList)
-                {
-                    foreach (var sample in category.Items)
-                    {
-                        var sampleModel = (sample as SampleModel);
-                        if (sampleModel == null) continue;
-
-                        if (sampleModel.SampleName == featured.SampleName)
-                            collectedFeaturedSamplesList.Add(sampleModel);
-                    }
-                }
-            }
-
-            // Make sure that Featured is shown on top of the categories
-            if (collectedFeaturedSamplesList.Count > 0)
-                categoriesList.Insert(0, new TreeItem
-                    { Name = "Featured", Items = collectedFeaturedSamplesList });
-            
-            categories.ItemsSource = categoriesList;
-            categories.SelectedIndex = 0;
-
-            Frame.Navigated += OnFrameNavigated;
-
-            HideLoadingIndication();
-        }
-
-        private void OnCategoriesSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (e.AddedItems.Count > 0)
-            {
-                if (RootSplitView.DisplayMode != SplitViewDisplayMode.Inline)
-                    RootSplitView.IsPaneOpen = false;
+                _currentView.AppViewBackButtonVisibility = AppViewBackButtonVisibility.Visible;
             }
         }
+    }
 
-        private void OnSampleItemTapped(object sender, TappedRoutedEventArgs e)
+    internal class TreeViewItemTemplateSelector : DataTemplateSelector
+    {
+        public DataTemplate CategoryTemplate { get; set; }
+        public DataTemplate SampleTemplate { get; set; }
+
+        protected override DataTemplate SelectTemplateCore(object item)
         {
-            var selectedSample = (sender as FrameworkElement).DataContext as SampleModel;
-            if (selectedSample == null) return;
-
-            // Call a function to clear existing credentials
-            ClearCredentials();
-
-            SampleManager.Current.SelectedSample = selectedSample;
-
-            // Navigate to the sample page that shows the sample and details
-            Frame.Navigate(typeof(SamplePage));
-        }
-
-        private void ClearCredentials()
-        {
-            // Clear credentials (if any) from previous sample runs
-            var creds = Esri.ArcGISRuntime.Security.AuthenticationManager.Current.Credentials;
-            for (var i = creds.Count() - 1; i >= 0; i--)
+            // Select the correct template to display the text for the node in the treeview.
+            if (((muxc.TreeViewNode)item).Content.GetType() == typeof(SearchableTreeNode))
             {
-                var c = creds.ElementAtOrDefault(i);
-                if (c != null)
-                {
-                    Esri.ArcGISRuntime.Security.AuthenticationManager.Current.RemoveCredential(c);
-                }
+                return CategoryTemplate;
             }
-        }
-
-        private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
-        {
-            if (SearchToggleButton.IsChecked.HasValue && SearchToggleButton.IsChecked.Value)
+            else if (((muxc.TreeViewNode)item).Content.GetType() == typeof(SampleInfo))
             {
-                //SearchBox.Visibility = Visibility.Collapsed;
-                SearchToggleButton.Visibility = Visibility.Visible;
-                SearchToggleButton.IsChecked = false;
-            }
-        }
-
-        private void OnSearchToggleChecked(object sender, RoutedEventArgs e)
-        {
-            if (SearchToggleButton.IsChecked.HasValue && SearchToggleButton.IsChecked.Value)
-            {
-                //SearchBox.Visibility = Visibility.Visible;
-                SearchToggleButton.Visibility = Visibility.Collapsed;
+                return SampleTemplate;
             }
             else
             {
-                //SearchBox.Visibility = Visibility.Collapsed;
+                // No text will be displayed if another type of content is in the treeview.
+                return null;
             }
-        }
-
-        private async void OnInfoClicked(object sender, RoutedEventArgs e)
-        {
-            var sampleModel = (sender as Button).DataContext as SampleModel;
-            if (sampleModel == null)
-                return;
-
-            // Create dialog that is used to show the picture
-            var dialog = new ContentDialog()
-            {
-                Title = sampleModel.Name,
-                //MaxWidth = ActualWidth,
-                //MaxHeight = ActualHeight
-            };
-
-            dialog.PrimaryButtonText = "close";
-            dialog.SecondaryButtonText = "show";
-            dialog.PrimaryButtonClick += (s, args) =>
-            {
-               
-            };
-            dialog.SecondaryButtonClick += (s, args) =>
-            {
-                OnSampleItemTapped(sender, new TappedRoutedEventArgs());
-            };
-
-            dialog.Content = new SampleInfoDialog() { DataContext = sampleModel };
-
-            // Show dialog as a full screen overlay. 
-            await dialog.ShowAsync();
-        }
-
-        private void OnInfoTapped(object sender, TappedRoutedEventArgs e)
-        {
-            e.Handled = true;
         }
     }
 }

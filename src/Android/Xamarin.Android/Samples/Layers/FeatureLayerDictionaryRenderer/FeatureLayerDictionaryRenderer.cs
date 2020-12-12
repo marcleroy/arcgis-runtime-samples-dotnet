@@ -7,24 +7,31 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
 using Android.App;
 using Android.OS;
 using Android.Widget;
-using ArcGISRuntimeXamarin.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
-using System.IO;
+using ArcGISRuntime.Samples.Managers;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDictionaryRenderer
+namespace ArcGISRuntime.Samples.FeatureLayerDictionaryRenderer
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("c78b149a1d52414682c86a5feeb13d30", "e0d41b4b409a49a5a7ba11939d8535dc")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Dictionary renderer with feature layer",
+        category: "Layers",
+        description: "Convert features into graphics to show them with mil2525d symbols.",
+        instructions: "Pan and zoom around the map. Observe the displayed military symbology on the map.",
+        tags: new[] { "military", "symbol" })]
     public class FeatureLayerDictionaryRenderer : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -40,9 +47,10 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDictionaryRenderer
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app
@@ -57,12 +65,6 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDictionaryRenderer
             // Provide Map to the MapView
             _myMapView.Map = myMap;
 
-            // Create geometry for the center of the map
-            MapPoint centerGeometry = new MapPoint(-13549402.587055, 4397264.96879385, SpatialReference.Create(3857));
-
-            // Set the map's viewpoint to highlight the desired content
-            await _myMapView.SetViewpointAsync(new Viewpoint(centerGeometry, 201555));
-
             // Get the path to the geodatabase
             string geodbFilePath = GetGeodatabasePath();
 
@@ -72,55 +74,55 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDictionaryRenderer
             // Get the path to the symbol dictionary
             string symbolFilepath = GetStyleDictionaryPath();
 
-            // Load the symbol dictionary from local storage
-            //     Note that the type of the symbol definition must be explicitly provided along with the file name
-            DictionarySymbolStyle symbolStyle = await DictionarySymbolStyle.OpenAsync("mil2525d", symbolFilepath);
-
-            // Add geodatabase features to the map, using the defined symbology
-            foreach (FeatureTable table in baseGeodatabase.GeodatabaseFeatureTables)
+            try
             {
-                // Load the table
-                await table.LoadAsync();
+                // Load the symbol dictionary from local storage
+                DictionarySymbolStyle symbolStyle = await DictionarySymbolStyle.CreateFromFileAsync(symbolFilepath);
 
-                // Create the feature layer from the table
-                FeatureLayer myLayer = new FeatureLayer(table);
+                // Add geodatabase features to the map, using the defined symbology
+                foreach (FeatureTable table in baseGeodatabase.GeodatabaseFeatureTables)
+                {
+                    // Load the table
+                    await table.LoadAsync();
 
-                // Load the layer
-                await myLayer.LoadAsync();
+                    // Create the feature layer from the table
+                    FeatureLayer myLayer = new FeatureLayer(table);
 
-                // Create a Dictionary Renderer using the DictionarySymbolStyle
-                DictionaryRenderer dictRenderer = new DictionaryRenderer(symbolStyle);
+                    // Load the layer
+                    await myLayer.LoadAsync();
 
-                // Apply the dictionary renderer to the layer
-                myLayer.Renderer = dictRenderer;
+                    // Create a Dictionary Renderer using the DictionarySymbolStyle
+                    DictionaryRenderer dictRenderer = new DictionaryRenderer(symbolStyle);
 
-                // Add the layer to the map
-                myMap.OperationalLayers.Add(myLayer);
+                    // Apply the dictionary renderer to the layer
+                    myLayer.Renderer = dictRenderer;
+
+                    // Add the layer to the map
+                    myMap.OperationalLayers.Add(myLayer);
+                }
+
+                // Create geometry for the center of the map
+                MapPoint centerGeometry = new MapPoint(-13549402.587055, 4397264.96879385, SpatialReference.Create(3857));
+
+                // Set the map's viewpoint to highlight the desired content
+                _myMapView.SetViewpoint(new Viewpoint(centerGeometry, 201555));
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
             }
         }
 
         // Get the file path for the style dictionary
         private string GetStyleDictionaryPath()
         {
-            #region offlinedata
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e34835bf5ec5430da7cf16bb8c0b075c
-			return Path.Combine(folder, "SampleData", "FeatureLayerDictionaryRenderer", "mil2525d.stylx");
-            #endregion offlinedata
+            return DataManager.GetDataFolder("c78b149a1d52414682c86a5feeb13d30", "mil2525d.stylx");
         }
 
         // Get the file path for the geodatabase
         private string GetGeodatabasePath()
         {
-            #region offlinedata
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e0d41b4b409a49a5a7ba11939d8535dc
-			return Path.Combine(folder, "SampleData", "FeatureLayerDictionaryRenderer", "militaryoverlay.geodatabase");
-            #endregion offlinedata
+            return DataManager.GetDataFolder("e0d41b4b409a49a5a7ba11939d8535dc", "militaryoverlay.geodatabase");
         }
     }
 }

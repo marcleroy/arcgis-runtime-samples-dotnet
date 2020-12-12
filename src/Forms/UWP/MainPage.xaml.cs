@@ -7,16 +7,15 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
-using Windows.UI.Core;
 
-namespace ArcGISRuntimeXamarin.UWP
+namespace ArcGISRuntime.UWP
 {
     public sealed partial class MainPage
     {
         public MainPage()
         {
             InitializeComponent();
-            LoadApplication(new ArcGISRuntimeXamarin.App());
+            LoadApplication(new ArcGISRuntime.App());
         }
     }
 }

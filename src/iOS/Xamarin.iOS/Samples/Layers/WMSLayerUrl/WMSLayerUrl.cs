@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,75 +7,85 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
+using System.Collections.Generic;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Collections.Generic;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.WMSLayerUrl
+namespace ArcGISRuntime.Samples.WMSLayerUrl
 {
     [Register("WMSLayerUrl")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "WMS layer (URL)",
+        category: "Layers",
+        description: "Display a WMS layer using a WMS service URL.",
+        instructions: "The map will load automatically when the sample starts.",
+        tags: new[] { "OGC", "WmsLayer", "web map service" })]
     public class WMSLayerUrl : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
-        // Hold the URL to the WMS service showing the geology of Africa
-        private Uri wmsUrl = new Uri("https://certmapper.cr.usgs.gov/arcgis/services/geology/africa/MapServer/WMSServer?request=GetCapabilities&service=WMS");
+        // Hold the URL to the WMS service showing U.S. weather radar.
+        private readonly Uri _wmsUrl = new Uri(
+            "https://nowcoast.noaa.gov/arcgis/services/nowcoast/radar_meteo_imagery_nexrad_time/MapServer/WMSServer?request=GetCapabilities&service=WMS");
 
-        // Hold a list of uniquely-identifying WMS layer names to display
-        private List<String> wmsLayerNames = new List<string> { "0" };
+        // Hold a list of uniquely-identifying WMS layer names to display.
+        private readonly List<string> _wmsLayerNames = new List<string> {"1"};
 
         public WMSLayerUrl()
         {
             Title = "WMS layer (URL)";
         }
 
-        public override void ViewDidLoad()
+        private void Initialize()
         {
-            base.ViewDidLoad();
+            // Create a map with basemap and initial viewpoint.
+            Map myMap = new Map(Basemap.CreateLightGrayCanvas())
+            {
+                // Set the initial viewpoint.
+                InitialViewpoint = new Viewpoint(
+                    new Envelope(-19195297.778679, 512343.939994, -3620418.579987, 8658913.035426, 0.0, 0.0, SpatialReferences.WebMercator))
+            };
 
-            // Create the UI, setup the control references
-            CreateLayout();
-
-            // Initialize the map
-            Initialize();
-        }
-
-        private void CreateLayout()
-        {
-            // Add the mapview to the view
-            View.AddSubviews(_myMapView);
-        }
-
-        private async void Initialize()
-        {
-            // Apply an imagery basemap to the map
-            Map myMap = new Map(Basemap.CreateImagery());
-
-            // Set the initial viewpoint
-            myMap.InitialViewpoint = new Viewpoint(
-                new MapPoint(25.450, -4.59, new SpatialReference(4326)), 1000000);
-
-            // Add the map to the mapview
+            // Add the map to the mapview.
             _myMapView.Map = myMap;
 
-            // Create a new WMS layer displaying the specified layers from the service
-            WmsLayer myWmsLayer = new WmsLayer(wmsUrl, wmsLayerNames);
+            // Create a new WMS layer displaying the specified layers from the service.
+            WmsLayer myWmsLayer = new WmsLayer(_wmsUrl, _wmsLayerNames);
 
-            // Add the layer to the map
+            // Add the layer to the map.
             myMap.OperationalLayers.Add(myWmsLayer);
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void ViewDidLoad()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            base.ViewDidLoad();
+            Initialize();
+        }
 
-            base.ViewDidLayoutSubviews();
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
+            View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

@@ -15,13 +15,19 @@ using Android.App;
 using Android.OS;
 using Android.Widget;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
+namespace ArcGISRuntime.Samples.DisplayLayerViewState
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display layer view state",
+        category: "MapView",
+        description: "Determine if a layer is currently being viewed.",
+        instructions: "Pan and zoom around in the map. Each layer's view status is displayed. Notice that some layers configured with a min and max scale change to \"OutOfScale\" at certain scales.",
+        tags: new[] { "layer", "map", "status", "view" })]
     public class DisplayLayerViewState : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Controls to show status of each layers' loading
         private TextView _TextViewTiledLayer;
@@ -45,38 +51,44 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
             Map myMap = new Map();
 
             // Create the uri for the tiled layer
-            var tiledLayerUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/WorldTimeZones/MapServer");
+            Uri tiledLayerUri = new Uri(
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/WorldTimeZones/MapServer");
 
             // Create a tiled layer using url
-            ArcGISTiledLayer tiledLayer = new ArcGISTiledLayer(tiledLayerUri);
-            tiledLayer.Name = "Tiled Layer";
+            ArcGISTiledLayer tiledLayer = new ArcGISTiledLayer(tiledLayerUri)
+            {
+                Name = "Tiled Layer"
+            };
 
             // Add the tiled layer to map
             myMap.OperationalLayers.Add(tiledLayer);
 
             // Create the uri for the ArcGISMapImage layer
-            var imageLayerUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer");
+            Uri imageLayerUri = new Uri(
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer");
 
             // Create ArcGISMapImage layer using a url
-            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(imageLayerUri);
-            imageLayer.Name = "Image Layer";
+            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(imageLayerUri)
+            {
+                Name = "Image Layer",
 
-            // Set the visible scale range for the image layer
-            imageLayer.MinScale = 40000000;
-            imageLayer.MaxScale = 2000000;
+                // Set the visible scale range for the image layer
+                MinScale = 40000000,
+                MaxScale = 2000000
+            };
 
             // Add the image layer to map
             myMap.OperationalLayers.Add(imageLayer);
 
             // Create Uri for feature layer
-            var featureLayerUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Recreation/FeatureServer/0");
+            Uri featureLayerUri = new Uri(
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Recreation/FeatureServer/0");
 
             // Create a feature layer using url
-            FeatureLayer myFeatureLayer = new FeatureLayer(featureLayerUri);
-            myFeatureLayer.Name = "Feature Layer";
+            FeatureLayer myFeatureLayer = new FeatureLayer(featureLayerUri)
+            {
+                Name = "Feature Layer"
+            };
 
             // Add the feature layer to map
             myMap.OperationalLayers.Add(myFeatureLayer);
@@ -121,7 +133,7 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create the controls to show the various layers' loading status
             _TextViewTiledLayer = new TextView(this);
@@ -132,6 +144,7 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayLayerViewState
             layout.AddView(_TextViewFeatureLayer);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

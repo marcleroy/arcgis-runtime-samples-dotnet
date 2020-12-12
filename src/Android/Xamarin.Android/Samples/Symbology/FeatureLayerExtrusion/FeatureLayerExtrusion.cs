@@ -19,13 +19,19 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Drawing;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
+namespace ArcGISRuntime.Samples.FeatureLayerExtrusion
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer extrusion",
+        category: "Symbology",
+        description: "Extrude features based on their attributes.",
+        instructions: "Press the button to switch between using population density and total population for extrusion. Higher extrusion directly corresponds to higher attribute values.",
+        tags: new[] { "3D", "extrude", "extrusion", "extrusion expression", "height", "renderer", "scene" })]
     public class FeatureLayerExtrusion : Activity
     {
-        // Create and hold reference to the used MapView
-        private SceneView _mySceneView = new SceneView();
+        // Hold a reference to the scene view
+        private SceneView _mySceneView;
 
         private Button _button_ToggleExtrusionData;
 
@@ -46,16 +52,18 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             try
             {
                 // Define the Uri for the service feature table (US state polygons)
-                var myServiceFeatureTable_Uri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
+                Uri myServiceFeatureTable_Uri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
 
                 // Create a new service feature table from the Uri
                 ServiceFeatureTable myServiceFeatureTable = new ServiceFeatureTable(myServiceFeatureTable_Uri);
 
                 // Create a new feature layer from the service feature table
-                FeatureLayer myFeatureLayer = new FeatureLayer(myServiceFeatureTable);
+                FeatureLayer myFeatureLayer = new FeatureLayer(myServiceFeatureTable)
+                {
 
-                // Set the rendering mode of the feature layer to be dynamic (needed for extrusion to work)
-                myFeatureLayer.RenderingMode = FeatureRenderingMode.Dynamic;
+                    // Set the rendering mode of the feature layer to be dynamic (needed for extrusion to work)
+                    RenderingMode = FeatureRenderingMode.Dynamic
+                };
 
                 // Create a new simple line symbol for the feature layer
                 SimpleLineSymbol mySimpleLineSymbol = new SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.Black, 1);
@@ -69,8 +77,8 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
                 // Get the scene properties from the simple renderer
                 RendererSceneProperties myRendererSceneProperties = mySimpleRenderer.SceneProperties;
 
-                // Set the extrusion mode for the scene properties to be base height
-                myRendererSceneProperties.ExtrusionMode = ExtrusionMode.BaseHeight;
+                // Set the extrusion mode for the scene properties
+                myRendererSceneProperties.ExtrusionMode = ExtrusionMode.AbsoluteHeight;
 
                 // Set the initial extrusion expression
                 myRendererSceneProperties.ExtrusionExpression = "[POP2007] / 10";
@@ -99,7 +107,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             catch (Exception ex)
             {
                 // Something went wrong, display the error
-                var alert = new AlertDialog.Builder(this);
+                AlertDialog.Builder alert = new AlertDialog.Builder(this);
                 alert.SetTitle("Error");
                 alert.SetMessage(ex.Message);
                 alert.Show();
@@ -118,15 +126,17 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
             RendererSceneProperties myRendererSceneProperties = myRenderer.SceneProperties;
 
             // Toggle the feature layer's scene properties renderer extrusion expression and change the button text
-            if (_button_ToggleExtrusionData.Text == "Population Density")
+            if (_button_ToggleExtrusionData.Text == "Show population density")
             {
-                myRendererSceneProperties.ExtrusionExpression = "[POP07_SQMI] * 5000";
-                _button_ToggleExtrusionData.Text = "Total Population";
+                // An offset of 100000 is added to ensure that polygons for large areas (like Alaska)
+                // with low populations will be extruded above the curvature of the Earth.
+                myRendererSceneProperties.ExtrusionExpression = "[POP07_SQMI] * 5000 + 100000";
+                _button_ToggleExtrusionData.Text = "Show total population";
             }
-            else if (_button_ToggleExtrusionData.Text == "Total Population")
+            else if (_button_ToggleExtrusionData.Text == "Show total population")
             {
                 myRendererSceneProperties.ExtrusionExpression = "[POP2007] / 10";
-                _button_ToggleExtrusionData.Text = "Population Density";
+                _button_ToggleExtrusionData.Text = "Show population density";
             }
         }
 
@@ -140,17 +150,20 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerExtrusion
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create Button
-            _button_ToggleExtrusionData = new Button(this);
-            _button_ToggleExtrusionData.Text = "Population Density";
+            _button_ToggleExtrusionData = new Button(this)
+            {
+                Text = "Show population density"
+            };
             _button_ToggleExtrusionData.Click += Button_ToggleExtrusionData_Clicked;
 
             // Add Button to the layout  
             layout.AddView(_button_ToggleExtrusionData);
 
             // Add the scene view to the layout
+            _mySceneView = new SceneView(this);
             layout.AddView(_mySceneView);
 
             // Show the layout in the app

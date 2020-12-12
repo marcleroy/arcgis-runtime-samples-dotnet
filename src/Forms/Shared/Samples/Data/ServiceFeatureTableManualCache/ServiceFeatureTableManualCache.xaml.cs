@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,8 +13,14 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
+namespace ArcGISRuntime.Samples.ServiceFeatureTableManualCache
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Service feature table (manual cache)",
+        category: "Data",
+        description: "Display a feature layer from a service using the **manual cache** feature request mode.",
+        instructions: "Run the sample and pan and zoom around the map. Observe the features loaded from the table.",
+        tags: new[] { "cache", "feature request mode", "performance" })]
     public partial class ServiceFeatureTableManualCache : ContentPage
     {
         private ServiceFeatureTable _incidentsFeatureTable;
@@ -23,7 +29,6 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
         {
             InitializeComponent ();
 
-            Title = "Service feature table (manual cache)";
             // Create the UI, setup the control references and execute initialization 
             Initialize();
         }
@@ -39,14 +44,16 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
             myMap.InitialViewpoint = new Viewpoint(initialLocation, 500000);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
 
             // Create feature table for the incident feature service
-            _incidentsFeatureTable = new ServiceFeatureTable(serviceUri);
+            _incidentsFeatureTable = new ServiceFeatureTable(serviceUri)
+            {
 
-            // Define the request mode
-            _incidentsFeatureTable.FeatureRequestMode = FeatureRequestMode.ManualCache;
+                // Define the request mode
+                FeatureRequestMode = FeatureRequestMode.ManualCache
+            };
 
             // When feature table is loaded, populate data
             _incidentsFeatureTable.LoadStatusChanged += OnLoadedPopulateData;
@@ -74,10 +81,17 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
             };
 
             // Create list of the fields that are returned from the service
-            var outputFields = new string[] { "*" };
+            string[] outputFields = { "*" };
 
-            // Populate feature table with the data based on query
-            await _incidentsFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            try
+            {
+                // Populate feature table with the data based on query
+                await _incidentsFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }
     }
 }

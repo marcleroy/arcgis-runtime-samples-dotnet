@@ -7,42 +7,35 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntime.Samples.Managers;
-using ArcGISRuntime.Samples.Models;
 using System;
+using System.IO;
 using System.Windows;
 
 namespace ArcGISRuntime.WPF.Viewer
 {
     public partial class App
     {
+        public static string ResourcePath => System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-            var selectedLanguage = Language.CSharp;
-
             try
             {
+                // Set the local data path - must be done before starting. On most systems, this will be C:\EsriSamples\Temp.
+                // This path should be kept short to avoid Windows path length limitations.
+                string tempDataPathRoot = Directory.GetParent(Environment.GetFolderPath(Environment.SpecialFolder.Windows)).FullName;
+                string tempDataPath = Path.Combine(tempDataPathRoot, "EsriSamples", "Temp");
+                Directory.CreateDirectory(tempDataPath); // CreateDirectory won't overwrite if it already exists.
+                Esri.ArcGISRuntime.ArcGISRuntimeEnvironment.TempPath = tempDataPath;
+
+                // Initialize ArcGISRuntime.
                 Esri.ArcGISRuntime.ArcGISRuntimeEnvironment.Initialize();
             }
             catch (Exception ex)
             {
                 // Show the message and shut down
-                MessageBox.Show(String.Format("There was an error that prevented initializing the runtime. {0}", ex.Message));
+                MessageBox.Show(string.Format("There was an error that prevented initializing the runtime. {0}", ex.Message));
                 Current.Shutdown();
             }
-
-            // Check application parameters:
-            // parameter definitions:
-            //     /vb = launch application using VBNet samples, defaults to C#
-            for (int i = 0; i != e.Args.Length; ++i)
-            {
-                if (e.Args[i] == "/vb")
-                {
-                    selectedLanguage = Language.VBNet;
-                }
-            }
-
-            ApplicationManager.Current.Initialize(selectedLanguage);
         }
     }
 }

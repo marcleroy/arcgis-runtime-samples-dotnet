@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,29 +7,29 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.GeoAnalysis;
 using System;
-using System.IO;
-using System.Threading.Tasks;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
+namespace ArcGISRuntime.Samples.LineOfSightGeoElement
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Line of sight (geoelement)",
+        category: "Analysis",
+        description: "Show a line of sight between two moving objects.",
+        instructions: "A line of sight will display between a point on the Empire State Building (observer) and a taxi (target).",
+        tags: new[] { "3D", "line of sight", "visibility", "visibility analysis" })]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("3af5cfec0fd24dac8d88aea679027cb9")]
     public partial class LineOfSightGeoElement : ContentPage
     {
         // URL of the elevation service - provides elevation component of the scene
-        private readonly Uri _elevationUri = new Uri("http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer");
+        private readonly Uri _elevationUri = new Uri("https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer");
 
         // URL of the building service - provides builidng models
         private readonly Uri _buildingsUri = new Uri("https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/New_York_LoD2_3D_Buildings/SceneServer/layers/0");
@@ -62,9 +62,7 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
         public LineOfSightGeoElement()
         {
             InitializeComponent();
-
-            Title = "Line of Sight (GeoElement)";
-
+            
             // Create the UI, setup the control references and execute initialization
             Initialize();
         }
@@ -72,9 +70,11 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
         private async void Initialize()
         {
             // Create scene
-            Scene myScene = new Scene(Basemap.CreateImageryWithLabels());
-            // Set initial viewpoint
-            myScene.InitialViewpoint = new Viewpoint(_observerPoint, 1000000);
+            Scene myScene = new Scene(Basemap.CreateImageryWithLabels())
+            {
+                // Set initial viewpoint
+                InitialViewpoint = new Viewpoint(_observerPoint, 1600)
+            };
             // Create the elevation source
             ElevationSource myElevationSource = new ArcGISTiledElevationSource(_elevationUri);
             // Add the elevation source to the scene
@@ -96,42 +96,51 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
             // Add the overlay to the scene
             MySceneView.GraphicsOverlays.Add(overlay);
 
-            // Add the taxi to the scene
-            // Create the model symbol for the taxi
-            ModelSceneSymbol taxiSymbol = await ModelSceneSymbol.CreateAsync(await GetModelUri());
-            // Set the anchor position for the mode; ensures that the model appears above the ground
-            taxiSymbol.AnchorPosition = SceneSymbolAnchorPosition.Bottom;
-            // Create the graphic from the taxi starting point and the symbol
-            _taxiGraphic = new Graphic(_points[0], taxiSymbol);
-            // Add the taxi graphic to the overlay
-            overlay.Graphics.Add(_taxiGraphic);
-
-            // Create GeoElement Line of sight analysis (taxi to building)
-            // Create the analysis
-            _geoLine = new GeoElementLineOfSight(_observerGraphic, _taxiGraphic);
-            // Apply an offset to the target. This helps avoid some false negatives
-            _geoLine.TargetOffsetZ = 2;
-            // Create the analysis overlay
-            AnalysisOverlay myAnalysisOverlay = new AnalysisOverlay();
-            // Add the analysis to the overlay
-            myAnalysisOverlay.Analyses.Add(_geoLine);
-            // Add the analysis overlay to the scene
-            MySceneView.AnalysisOverlays.Add(myAnalysisOverlay);
-
-            // Create a timer; this will enable animating the taxi
-            Device.StartTimer(new TimeSpan(0, 0, 0, 0, 60), () =>
+            try
             {
-                // Move the taxi every time the timer elapses
-                AnimationTimer_Elapsed(this, null);
-                // Keep the timer running
-                return true;
-            });
+                // Add the taxi to the scene
+                // Create the model symbol for the taxi
+                ModelSceneSymbol taxiSymbol = await ModelSceneSymbol.CreateAsync(new Uri(GetModelUri()));
+                // Set the anchor position for the mode; ensures that the model appears above the ground
+                taxiSymbol.AnchorPosition = SceneSymbolAnchorPosition.Bottom;
+                // Create the graphic from the taxi starting point and the symbol
+                _taxiGraphic = new Graphic(_points[0], taxiSymbol);
+                // Add the taxi graphic to the overlay
+                overlay.Graphics.Add(_taxiGraphic);
 
-            // Subscribe to TargetVisible events; allows for updating the UI and selecting the taxi when it is visible
-            _geoLine.TargetVisibilityChanged += Geoline_TargetVisibilityChanged;
+                // Create GeoElement Line of sight analysis (taxi to building)
+                // Create the analysis
+                _geoLine = new GeoElementLineOfSight(_observerGraphic, _taxiGraphic)
+                {
+                    // Apply an offset to the target. This helps avoid some false negatives
+                    TargetOffsetZ = 2
+                };
+                // Create the analysis overlay
+                AnalysisOverlay myAnalysisOverlay = new AnalysisOverlay();
+                // Add the analysis to the overlay
+                myAnalysisOverlay.Analyses.Add(_geoLine);
+                // Add the analysis overlay to the scene
+                MySceneView.AnalysisOverlays.Add(myAnalysisOverlay);
 
-            // Add the scene to the view
-            MySceneView.Scene = myScene;
+                // Create a timer; this will enable animating the taxi
+                Device.StartTimer(new TimeSpan(0, 0, 0, 0, 60), () =>
+                {
+                    // Move the taxi every time the timer elapses
+                    AnimationTimer_Elapsed(this, null);
+                    // Keep the timer running
+                    return true;
+                });
+
+                // Subscribe to TargetVisible events; allows for updating the UI and selecting the taxi when it is visible
+                _geoLine.TargetVisibilityChanged += Geoline_TargetVisibilityChanged;
+
+                // Add the scene to the view
+                MySceneView.Scene = myScene;
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private void AnimationTimer_Elapsed(object sender, EventArgs e)
@@ -166,6 +175,10 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
             MapPoint intermediatePoint = InterpolatedPoint(starting, ending, progress);
             // Update the taxi geometry
             _taxiGraphic.Geometry = intermediatePoint;
+
+            // Update the taxi rotation.
+            GeodeticDistanceResult distance = GeometryEngine.DistanceGeodetic(starting, ending, LinearUnits.Meters, AngularUnits.Degrees, GeodeticCurveType.Geodesic);
+            ((ModelSceneSymbol)_taxiGraphic.Symbol).Heading = distance.Azimuth1;
         }
 
         private MapPoint InterpolatedPoint(MapPoint firstPoint, MapPoint secondPoint, double progress)
@@ -208,32 +221,11 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightGeoElement
             }
         }
 
-        private async Task<Uri> GetModelUri()
+        private static string GetModelUri()
         {
             // Returns the taxi model
 
-            #region offlinedata
-
-            // The desired model is expected to be called "dolmus.3ds"
-            string filename = "dolmus.3ds";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "LineOfSightGeoElement", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // If it's missing, download the GeoPackage
-                await DataManager.GetData("3af5cfec0fd24dac8d88aea679027cb9", "LineOfSightGeoElement");
-            }
-
-            // Return the path
-            return new Uri(filepath);
-
-            #endregion offlinedata
+            return DataManager.GetDataFolder("3af5cfec0fd24dac8d88aea679027cb9", "dolmus.3ds");
         }
 
         private void MyHeightSlider_ValueChanged(object sender, EventArgs e)

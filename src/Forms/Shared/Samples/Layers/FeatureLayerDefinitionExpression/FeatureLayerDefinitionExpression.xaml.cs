@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,8 +14,14 @@ using System;
 
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
+namespace ArcGISRuntime.Samples.FeatureLayerDefinitionExpression
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer definition expression",
+        category: "Layers",
+        description: "Limit the features displayed on a map with a definition expression.",
+        instructions: "Press the 'Apply Expression' button to limit the features requested from the feature layer to those specified by the SQL query definition expression. Tap the 'Reset Expression' button to remove the definition expression on the feature layer, which returns all the records.",
+        tags: new[] { "SQL", "definition expression", "filter", "limit data", "query", "restrict data", "where clause" })]
     public partial class FeatureLayerDefinitionExpression : ContentPage
     {
         //Create and hold reference to the feature layer
@@ -25,13 +31,11 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
         {
             InitializeComponent ();
 
-            Title = "Feature layer definition expression";
-
             //setup the control references and execute initialization 
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Create new Map with basemap
             Map myMap = new Map(Basemap.CreateTopographic());
@@ -58,12 +62,6 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
 
             //Add the feature layer to the map
             myMap.OperationalLayers.Add(_featureLayer);
-
-            // TODO: https://github.com/Esri/arcgis-runtime-samples-xamarin/issues/96
-            if (Device.OS == TargetPlatform.iOS || Device.OS == TargetPlatform.Other)
-            {
-                await _featureLayer.RetryLoadAsync();
-            }
         }
 
         private void OnApplyExpressionClicked(object sender, EventArgs e)

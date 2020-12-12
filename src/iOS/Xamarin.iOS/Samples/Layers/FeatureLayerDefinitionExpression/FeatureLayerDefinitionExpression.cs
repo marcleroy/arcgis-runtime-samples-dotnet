@@ -7,122 +7,146 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
+namespace ArcGISRuntime.Samples.FeatureLayerDefinitionExpression
 {
     [Register("FeatureLayerDefinitionExpression")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer definition expression",
+        category: "Layers",
+        description: "Limit the features displayed on a map with a definition expression.",
+        instructions: "Press the 'Apply Expression' button to limit the features requested from the feature layer to those specified by the SQL query definition expression. Tap the 'Reset Expression' button to remove the definition expression on the feature layer, which returns all the records.",
+        tags: new[] { "SQL", "definition expression", "filter", "limit data", "query", "restrict data", "where clause" })]
     public class FeatureLayerDefinitionExpression : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UIBarButtonItem _resetButton;
+        private UIBarButtonItem _applyExpressionButton;
 
-        // Create and hold reference to the feature layer
+        // Create and hold reference to the feature layer.
         private FeatureLayer _featureLayer;
 
         public FeatureLayerDefinitionExpression()
         {
-            this.Title = "Feature layer definition expression";
-        }
-
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-
-		public override void ViewWillDisappear(bool animated)
-		{
-			base.ViewWillDisappear(animated);
-			NavigationController.ToolbarHidden = true;
-		}
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
+            Title = "Feature layer definition expression";
         }
 
         private async void Initialize()
         {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateTopographic());
+            // Create new Map with basemap.
+            Map map = new Map(Basemap.CreateTopographic());
 
-            // Create a mappoint the map should zoom to
+            // Create a point the map should zoom to.
             MapPoint mapPoint = new MapPoint(-13630484, 4545415, SpatialReferences.WebMercator);
 
-            // Set the initial viewpoint for map
-            myMap.InitialViewpoint = new Viewpoint(mapPoint, 90000);
+            // Set the initial viewpoint for map.
+            map.InitialViewpoint = new Viewpoint(mapPoint, 90000);
 
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
+            // Provide used Map to the MapView.
+            _myMapView.Map = map;
 
-            // Create the uri for the feature service
+            // Create the URI for the feature service.
             Uri featureServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
 
-            // Initialize feature table using a url to feature server url
+            // Initialize feature table using a URL to feature server.
             ServiceFeatureTable featureTable = new ServiceFeatureTable(featureServiceUri);
 
-            // Initialize a new feature layer based on the feature table
+            // Initialize a new feature layer based on the feature table.
             _featureLayer = new FeatureLayer(featureTable);
 
-            // Load the layer
+            // Load the layer.
             await _featureLayer.LoadAsync();
 
-            // Check for the load status. If the layer is loaded then add it to map
+            // Check for the load status. If the layer is loaded then add it to map.
             if (_featureLayer.LoadStatus == Esri.ArcGISRuntime.LoadStatus.Loaded)
             {
-                //Add the feature layer to the map
-                myMap.OperationalLayers.Add(_featureLayer);
+                // Add the feature layer to the map.
+                map.OperationalLayers.Add(_featureLayer);
             }
         }
 
         private void OnApplyExpressionClicked(object sender, EventArgs e)
         {
-            // Adding definition expression to show specific features only
+            // Adding definition expression to show specific features only.
             _featureLayer.DefinitionExpression = "req_Type = 'Tree Maintenance or Damage'";
         }
 
         private void OnResetButtonClicked(object sender, EventArgs e)
         {
-            // Reset the definition expression to see all features again
+            // Reset the definition expression to see all features again.
             _featureLayer.DefinitionExpression = "";
         }
 
-        private void CreateLayout()
+        public override void ViewDidLoad()
         {
-            // Create MapView
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
             _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Create a button to reset the renderer
-            var resetButton = new UIBarButtonItem() { Title = "Reset", Style = UIBarButtonItemStyle.Plain };
-            resetButton.Clicked += OnResetButtonClicked;
+            _resetButton = new UIBarButtonItem();
+            _resetButton.Title = "Reset";
 
-            // Create a button to apply new renderer
-            var expressionButton = new UIBarButtonItem() { Title = "Apply Expression", Style = UIBarButtonItemStyle.Plain };
-            expressionButton.Clicked += OnApplyExpressionClicked;
+            _applyExpressionButton = new UIBarButtonItem();
+            _applyExpressionButton.Title = "Apply expression";
 
-            // Add the buttons to the toolbar
-            SetToolbarItems(new UIBarButtonItem[] {resetButton,
-                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace, null),
-                expressionButton}, false);
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                _resetButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _applyExpressionButton
+            };
 
-            // Show the toolbar
-            NavigationController.ToolbarHidden = false;
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
 
-            // Add MapView to the page
-            View.AddSubviews(_myMapView);
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _resetButton.Clicked += OnResetButtonClicked;
+            _applyExpressionButton.Clicked += OnApplyExpressionClicked;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _resetButton.Clicked -= OnResetButtonClicked;
+            _applyExpressionButton.Clicked -= OnApplyExpressionClicked;
         }
     }
 }

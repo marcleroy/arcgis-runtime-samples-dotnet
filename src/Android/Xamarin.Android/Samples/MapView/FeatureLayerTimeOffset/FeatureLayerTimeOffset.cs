@@ -1,4 +1,4 @@
-// Copyright 2017 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -9,6 +9,7 @@
 
 using Android.App;
 using Android.OS;
+using Android.Views;
 using Android.Widget;
 using Esri.ArcGISRuntime;
 using Esri.ArcGISRuntime.Mapping;
@@ -16,16 +17,23 @@ using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
+namespace ArcGISRuntime.Samples.FeatureLayerTimeOffset
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer time offset",
+        category: "MapView",
+        description: "Display a time-enabled feature layer with a time offset.",
+        instructions: "When the sample loads, you'll see hurricane tracks visualized in red and blue. The red hurricane tracks occurred 10 days before the tracks displayed in blue. Adjust the slider to move the interval to visualize how storms progress over time.",
+        tags: new[] { "change", "range", "time", "time extent", "time offset", "time-aware", "time-enabled" })]
     public class FeatureLayerTimeOffset : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Hold references to the UI controls
         private TextView _redLabel;
+
         private TextView _blueLabel;
         private TextView _timeLabel;
         private SeekBar _timeSlider;
@@ -64,6 +72,9 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             // Create the offset hurricanes feature layer
             FeatureLayer withOffsetLayer = new FeatureLayer(_featureLayerUri);
 
+            // Center the Viewpoint on the FeatureLayer once the feature layer has loaded.
+            withOffsetLayer.Loaded += (s, e) => { _myMapView.SetViewpointGeometryAsync(withOffsetLayer.FullExtent, 50); };
+
             // Apply a red dot renderer to distinguish these hurricanes from the non-offset hurricanes
             SimpleMarkerSymbol redDot = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Circle, System.Drawing.Color.Red, 10);
             withOffsetLayer.Renderer = new SimpleRenderer(redDot);
@@ -77,27 +88,34 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             // Apply the Map to the MapView
             _myMapView.Map = myMap;
 
-            // Ensure the no offset layer is loaded
-            await noOffsetLayer.LoadAsync();
+            try
+            {
+                // Ensure the no offset layer is loaded
+                await noOffsetLayer.LoadAsync();
 
-            // Store a reference to the original time extent
-            _originalExtent = noOffsetLayer.FullTimeExtent;
+                // Store a reference to the original time extent
+                _originalExtent = noOffsetLayer.FullTimeExtent;
 
-            // Update the time extent set on the map
-            UpdateTimeExtent();
+                // Update the time extent set on the map
+                UpdateTimeExtent();
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create the UI controls
-            _redLabel = new TextView(this) { Text = "Red hurricanes offset 10 days" };
+            _redLabel = new TextView(this) { Text = "Red hurricanes offset 10 days", Gravity = GravityFlags.CenterHorizontal };
             _redLabel.SetTextColor(Android.Graphics.Color.Red);
-            _blueLabel = new TextView(this) { Text = "Blue hurricanes not offset" };
+            _blueLabel = new TextView(this) { Text = "Blue hurricanes not offset", Gravity = GravityFlags.CenterHorizontal };
             _blueLabel.SetTextColor(Android.Graphics.Color.Blue);
-            _timeLabel = new TextView(this) { Text = "" };
+            _timeLabel = new TextView(this) { Text = "", Gravity = GravityFlags.CenterHorizontal };
             _timeSlider = new SeekBar(this) { Max = 100 };
 
             // Add the controls to the layout
@@ -107,6 +125,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             layout.AddView(_timeSlider);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app
@@ -158,7 +177,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             _myMapView.TimeExtent = new TimeExtent(newStart, newEnd);
 
             // Update the label
-            _timeLabel.Text = String.Format("{0} - {1}", newStart.ToString("d"), newEnd.ToString("d"));
+            _timeLabel.Text = $"{newStart:d} - {newEnd:d}";
         }
     }
 }

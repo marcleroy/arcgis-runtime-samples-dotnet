@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,23 +7,23 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.UI;
-using Esri.ArcGISRuntime.Xamarin.Forms;
 using Xamarin.Forms;
-using System.Collections.Generic;
 using Esri.ArcGISRuntime.Data;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.IdentifyGraphics
+namespace ArcGISRuntime.Samples.IdentifyGraphics
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Identify graphics",
+        category: "GraphicsOverlay",
+        description: "Display an alert message when a graphic is clicked.",
+        instructions: "Select a graphic to identify it. You will see an alert message displayed.",
+        tags: new[] { "graphics", "identify" })]
     public partial class IdentifyGraphics : ContentPage
     {
         // Graphics overlay to host graphics
@@ -32,8 +32,6 @@ namespace ArcGISRuntimeXamarin.Samples.IdentifyGraphics
         public IdentifyGraphics()
         {
             InitializeComponent();
-
-            Title = "Identify graphics";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -85,25 +83,32 @@ namespace ArcGISRuntimeXamarin.Samples.IdentifyGraphics
 
         private async void OnMapViewTapped(object sender, Esri.ArcGISRuntime.Xamarin.Forms.GeoViewInputEventArgs e)
         {
-            var tolerance = 10d; // Use larger tolerance for touch
-            var maximumResults = 1; // Only return one graphic  
-            var onlyReturnPopups = false; // Don't return only popups
+            double tolerance = 10d; // Use larger tolerance for touch
+            int maximumResults = 1; // Only return one graphic  
+            bool onlyReturnPopups = false; // Don't return only popups
 
-            // Use the following method to identify graphics in a specific graphics overlay
-            IdentifyGraphicsOverlayResult identifyResults = await MyMapView.IdentifyGraphicsOverlayAsync(
-                 _polygonOverlay,
-                 e.Position,
-                 tolerance, 
-                 onlyReturnPopups, 
-                 maximumResults);
-
-            // Check if we got results
-            if (identifyResults.Graphics.Count > 0)
+            try
             {
-                // Make sure that the UI changes are done in the UI thread
-                Device.BeginInvokeOnMainThread(async () => {
-                    await DisplayAlert("", "Tapped on graphic", "OK");
-                });
+                // Use the following method to identify graphics in a specific graphics overlay
+                IdentifyGraphicsOverlayResult identifyResults = await MyMapView.IdentifyGraphicsOverlayAsync(
+                    _polygonOverlay,
+                    e.Position,
+                    tolerance, 
+                    onlyReturnPopups, 
+                    maximumResults);
+
+                // Check if we got results
+                if (identifyResults.Graphics.Count > 0)
+                {
+                    // Make sure that the UI changes are done in the UI thread
+                    Device.BeginInvokeOnMainThread(async () => {
+                        await Application.Current.MainPage.DisplayAlert("", "Tapped on graphic", "OK");
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
             }
         }
     }

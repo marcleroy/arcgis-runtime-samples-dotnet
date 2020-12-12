@@ -15,17 +15,27 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
+using Android.Views;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
+namespace ArcGISRuntime.Samples.DisplayDrawingStatus
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display draw status",
+        category: "MapView",
+        description: "Get the draw status of your map view or scene view to know when all layers in the map or scene have finished drawing.",
+        instructions: "Pan and zoom around the map. Observe how the status changes from a loading animation to solid, indicating that drawing has completed.",
+        tags: new[] { "draw", "loading", "map", "render" })]
     public class DisplayDrawingStatus : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
-        // Create Control to show the drawing status
-        ProgressDialog _activityIndicator;
+        // Waiting popup
+        private AlertDialog _progressDialog;
+
+        // Status label
+        private TextView _statusLabel;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -38,7 +48,7 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Hook up the DrawStatusChanged event
             _myMapView.DrawStatusChanged += OnDrawStatusChanged;
@@ -47,8 +57,8 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
             Map myMap = new Map(BasemapType.Topographic, 34.056, -117.196, 4);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0");
+            Uri serviceUri = new Uri(
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0");
 
             // Initialize a new feature layer
             ServiceFeatureTable myFeatureTable = new ServiceFeatureTable(serviceUri);
@@ -69,24 +79,39 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
                 // Show the activity indicator if the map is drawing
                 if (e.Status == DrawStatus.InProgress)
                 {
-                    _activityIndicator.SetMessage("Drawing is in progress");
-                    _activityIndicator.Show();
+                    _progressDialog.Show();
+                    _statusLabel.Text = "Drawing status: In progress";
                 }
                 else
-                    _activityIndicator.Hide();
+                {
+                    _progressDialog.Hide();
+                    _statusLabel.Text = "Drawing status: Complete";
+                }
             });
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Add the map view to the layout
+            _statusLabel = new TextView(this);
+            _statusLabel.Text = "Drawing status: unknown";
+
+            // Add the views to the layout
+            layout.AddView(_statusLabel);
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Create an activity indicator
-            _activityIndicator = new ProgressDialog(this);
+            // Show the waiting dialog.
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.SetView(new ProgressBar(this)
+            {
+                Indeterminate = true
+            });
+            builder.SetMessage("Drawing in progress.");
+            _progressDialog = builder.Create();
 
             // Show the layout in the app
             SetContentView(layout);

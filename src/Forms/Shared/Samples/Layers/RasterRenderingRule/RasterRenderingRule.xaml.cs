@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -16,15 +16,19 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
+namespace ArcGISRuntime.Samples.RasterRenderingRule
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster rendering rule",
+        category: "Layers",
+        description: "Display a raster on a map and apply different rendering rules to that raster.",
+        instructions: "Run the sample and use the drop-down menu at the top to select a rendering rule.",
+        tags: new[] { "raster", "rendering rules", "visualization" })]
     public partial class RasterRenderingRule : ContentPage
     {
         public RasterRenderingRule()
         {
             InitializeComponent();
-
-            Title = "Raster rendering rule";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -42,50 +46,59 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
         private async void Initialize()
         {
             // Assign a new map to the MapView
-            MyMapView.Map = new Map();
+            MyMapView.Map = new Map
+            {
 
-            // Set the basemap to Streets
-            MyMapView.Map.Basemap = Basemap.CreateStreets();
+                // Set the basemap to Streets
+                Basemap = Basemap.CreateStreets()
+            };
 
             // Create a new image service raster from the Uri
             ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri);
 
-            // Load the image service raster
-            await myImageServiceRaster.LoadAsync();
-
-            // Get the ArcGIS image service info (metadata) from the image service raster
-            ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
-
-            // Get the full extent envelope of the image service raster (the Charlotte, NC area)
-            Envelope myEnvelope = myArcGISImageServiceInfo.FullExtent;
-
-            // Define a new view point from the full extent envelope
-            Viewpoint myViewPoint = new Viewpoint(myEnvelope);
-
-            // Zoom to the area of the full extent envelope of the image service raster
-            await MyMapView.SetViewpointAsync(myViewPoint);
-
-            // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster
-            _myReadOnlyListRenderRuleInfos = myArcGISImageServiceInfo.RenderingRuleInfos;
-
-            // Loop through each rendering rule info
-            foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+            try
             {
-                // Get the name of the rendering rule info
-                string myRenderingRuleName = myRenderingRuleInfo.Name;
+                // Load the image service raster
+                await myImageServiceRaster.LoadAsync();
 
-                // Add the name of the rendering rule info into the list of names
-                _names.Add(myRenderingRuleName);
+                // Get the ArcGIS image service info (metadata) from the image service raster
+                ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
+
+                // Get the full extent envelope of the image service raster (the Charlotte, NC area)
+                Envelope myEnvelope = myArcGISImageServiceInfo.FullExtent;
+
+                // Define a new view point from the full extent envelope
+                Viewpoint myViewPoint = new Viewpoint(myEnvelope);
+
+                // Zoom to the area of the full extent envelope of the image service raster
+                await MyMapView.SetViewpointAsync(myViewPoint);
+
+                // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster
+                _myReadOnlyListRenderRuleInfos = myArcGISImageServiceInfo.RenderingRuleInfos;
+
+                // Loop through each rendering rule info
+                foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+                {
+                    // Get the name of the rendering rule info
+                    string myRenderingRuleName = myRenderingRuleInfo.Name;
+
+                    // Add the name of the rendering rule info into the list of names
+                    _names.Add(myRenderingRuleName);
+                }
+
+                // Call the function to display the image service raster based up on user choice of rendering rules
+                await ChangeRenderingRuleAsync();
             }
-
-            // Call the function to display the image service raster based up on user choice of rendering rules
-            await ChangeRenderingRuleAsync();
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private async Task ChangeRenderingRuleAsync()
         {
             // Display a picker to the user to choose among the available rendering rules for the image service raster
-            string myRenderingRuleInfoName = await DisplayActionSheet("Select a Rendering Rule", "Cancel", null, _names.ToArray());
+            string myRenderingRuleInfoName = await ((Page)Parent).DisplayActionSheet("Select a Rendering Rule", "Cancel", null, _names.ToArray());
 
             // Loop through each rendering rule info in the image service raster
             foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
@@ -100,10 +113,12 @@ namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
                     RenderingRule myRenderingRule = new RenderingRule(myRenderingRuleInfo);
 
                     // Create a new image service raster
-                    ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri);
+                    ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri)
+                    {
 
-                    // Set the image service raster's rendering rule to the rendering rule created earlier
-                    myImageServiceRaster.RenderingRule = myRenderingRule;
+                        // Set the image service raster's rendering rule to the rendering rule created earlier
+                        RenderingRule = myRenderingRule
+                    };
 
                     // Create a new raster layer from the image service raster
                     RasterLayer myRasterLayer = new RasterLayer(myImageServiceRaster);

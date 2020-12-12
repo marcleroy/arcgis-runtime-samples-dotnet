@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,22 +12,21 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.RenderSimpleMarkers
+namespace ArcGISRuntime.Samples.RenderSimpleMarkers
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Simple marker symbol",
+        category: "Symbology",
+        description: "Show a simple marker symbol on a map.",
+        instructions: "The sample loads with a predefined simple marker symbol, set as a red circle.",
+        tags: new[] { "SimpleMarkerSymbol", "symbol" })]
     public partial class RenderSimpleMarkers : ContentPage
     {
         public RenderSimpleMarkers()
         {
             InitializeComponent ();
-
-            Title = "Render simple markers";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();

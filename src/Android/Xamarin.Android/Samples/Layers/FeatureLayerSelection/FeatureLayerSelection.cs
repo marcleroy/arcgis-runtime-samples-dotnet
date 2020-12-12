@@ -3,8 +3,8 @@
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using Android.App;
@@ -16,16 +16,23 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Drawing;
+using Esri.ArcGISRuntime;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerSelection
+namespace ArcGISRuntime.Samples.FeatureLayerSelection
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer selection",
+        category: "Layers",
+        description: "Select features in a feature layer.",
+        instructions: "Tap on a feature in the map. All features within a given tolerance (in pixels) of the tap will be selected.",
+        tags: new[] { "features", "layers", "select", "selection", "tolerance" })]
     public class FeatureLayerSelection : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Create and hold reference to the used MapView.
+        private MapView _myMapView;
 
-        // Create and hold reference to the feature layer
+        // Hold reference to the feature layer.
         private FeatureLayer _featureLayer;
 
         protected override void OnCreate(Bundle bundle)
@@ -34,97 +41,117 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerSelection
 
             Title = "Feature layer selection";
 
-            // Create the UI, setup the control references and execute initialization 
             CreateLayout();
             Initialize();
         }
 
         private async void Initialize()
         {
-            // Create new Map with basemap
-            var myMap = new Map(Basemap.CreateTopographic());
+            // Create new Map with basemap.
+            Map myMap = new Map(Basemap.CreateLightGrayCanvas());
 
-            // Create envelope to be used as a target extent for map's initial viewpoint
-            Envelope myEnvelope = new Envelope(
-                -1131596.019761, 3893114.069099, 3926705.982140, 7977912.461790,
-                SpatialReferences.WebMercator);
+            // Create envelope to be used as a target extent for map's initial viewpoint.
+            Envelope myEnvelope = new Envelope(-6603299.491810, 1679677.742046, 9002253.947487, 8691318.054732, SpatialReferences.WebMercator);
 
-            // Set the initial viewpoint for map
+            // Set the initial viewpoint for map.
             myMap.InitialViewpoint = new Viewpoint(myEnvelope);
 
-            // Provide used Map to the MapView
+            // Provide used Map to the MapView.
             _myMapView.Map = myMap;
 
-            // Create Uri for the feature service
+            // Set the selection color.
+            _myMapView.SelectionProperties.Color = Color.Cyan;
+
+            // Create Uri for the feature service.
             Uri featureServiceUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0");
+                "https://services1.arcgis.com/4yjifSiIG17X0gW4/arcgis/rest/services/GDP_per_capita_1960_2016/FeatureServer/0");
 
-            // Initialize feature table using a url to feature server url
-            var featureTable = new ServiceFeatureTable(featureServiceUri);
+            // Initialize feature table using a URL to feature server.
+            ServiceFeatureTable featureTable = new ServiceFeatureTable(featureServiceUri);
 
-            // Initialize a new feature layer based on the feature table
+            // Initialize a new feature layer based on the feature table.
             _featureLayer = new FeatureLayer(featureTable);
 
-            // Set the selection color for feature layer
-            _featureLayer.SelectionColor = Color.Cyan;
-
-            // Set the selection width
-            _featureLayer.SelectionWidth = 3;
-
-            // Make sure that used feature layer is loaded before we hook into the tapped event
-            // This prevents us trying to do selection on the layer that isn't initialized
-            await _featureLayer.LoadAsync();
-
-            // Check for the load status. If the layer is loaded then add it to map
-            if (_featureLayer.LoadStatus == Esri.ArcGISRuntime.LoadStatus.Loaded)
+            try
             {
-                // Add the feature layer to the map
-                myMap.OperationalLayers.Add(_featureLayer);
+                // Make sure that used feature layer is loaded before hooking into the tapped event
+                // This prevents trying to do selection on the layer that isn't initialized.
+                await _featureLayer.LoadAsync();
 
-                // Add tap event handler for mapview
-                _myMapView.GeoViewTapped += OnMapViewTapped;
+                // Check for the load status. If the layer is loaded then add it to map.
+                if (_featureLayer.LoadStatus == LoadStatus.Loaded)
+                {
+                    // Add the feature layer to the map.
+                    myMap.OperationalLayers.Add(_featureLayer);
+
+                    // Add tap event handler for mapview.
+                    _myMapView.GeoViewTapped += OnMapViewTapped;
+                }
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
             }
         }
 
         private async void OnMapViewTapped(object sender, GeoViewInputEventArgs e)
         {
-            // Define the selection tolerance
-            double tolerance = 5;
+            try
+            {
+                // Define the selection tolerance.
+                double tolerance = 15;
 
-            // Convert the tolerance to map units
-            double mapTolerance = tolerance * _myMapView.UnitsPerPixel;
+                // Convert the tolerance to map units.
+                double mapTolerance = tolerance * _myMapView.UnitsPerPixel;
 
-            // Get the tapped point
-            MapPoint geometry = e.Location;
+                // Get the tapped point.
+                MapPoint geometry = e.Location;
 
-            // Normalize the geometry if wrap-around is enabled
-            //    This is necessary because of how wrapped-around map coordinates are handled by Runtime
-            //    Without this step, querying may fail because wrapped-around coordinates are out of bounds.
-            if (_myMapView.IsWrapAroundEnabled) { geometry = GeometryEngine.NormalizeCentralMeridian(geometry) as MapPoint; }
+                // Normalize the geometry if wrap-around is enabled.
+                //    This is necessary because of how wrapped-around map coordinates are handled by Runtime.
+                //    Without this step, querying may fail because wrapped-around coordinates are out of bounds.
+                if (_myMapView.IsWrapAroundEnabled)
+                {
+                    geometry = (MapPoint)GeometryEngine.NormalizeCentralMeridian(geometry);
+                }
 
-            // Define the envelope around the tap location for selecting features
-            var selectionEnvelope = new Envelope(geometry.X - mapTolerance, geometry.Y - mapTolerance, geometry.X + mapTolerance,
-                geometry.Y + mapTolerance, _myMapView.Map.SpatialReference);
+                // Define the envelope around the tap location for selecting features.
+                Envelope selectionEnvelope = new Envelope(geometry.X - mapTolerance, geometry.Y - mapTolerance, geometry.X + mapTolerance,
+                    geometry.Y + mapTolerance, _myMapView.Map.SpatialReference);
 
-            // Define the query parameters for selecting features
-            var queryParams = new QueryParameters();
+                // Define the query parameters for selecting features.
+                QueryParameters queryParams = new QueryParameters
+                {
+                    // Set the geometry to selection envelope for selection by geometry.
+                    Geometry = selectionEnvelope
+                };
 
-            // Set the geometry to selection envelope for selection by geometry
-            queryParams.Geometry = selectionEnvelope;
-
-            // Select the features based on query parameters defined above
-            await _featureLayer.SelectFeaturesAsync(queryParams, SelectionMode.New);
+                // Select the features based on query parameters defined above.
+                await _featureLayer.SelectFeaturesAsync(queryParams, SelectionMode.New);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
-            // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            // Create a new vertical layout for the app.
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Add the map view to the layout
+            // Create and add a help label.
+            TextView helpLabel = new TextView(this)
+            {
+                Text = "Tap to select features."
+            };
+            layout.AddView(helpLabel);
+
+            // Add the map view to the layout.
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
-            // Show the layout in the app
+            // Show the layout in the app.
             SetContentView(layout);
         }
     }

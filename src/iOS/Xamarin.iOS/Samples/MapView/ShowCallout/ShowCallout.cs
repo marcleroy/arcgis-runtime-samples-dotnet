@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,65 +14,106 @@ using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ShowCallout
+namespace ArcGISRuntime.Samples.ShowCallout
 {
     [Register("ShowCallout")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Show callout",
+        category: "MapView",
+        description: "Show a callout with the latitude and longitude of user-tapped points.",
+        instructions: "Tap anywhere on the map. A callout showing the WGS84 coordinates for the tapped point will appear.",
+        tags: new[] { "balloon", "bubble", "callout", "flyout", "flyover", "info window", "popup", "tap" })]
     public class ShowCallout : UIViewController
     {
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public ShowCallout()
         {
             Title = "Show callout";
         }
 
+        private void Initialize()
+        {
+            // Show a streets basemap.
+            _myMapView.Map = new Map(Basemap.CreateStreets());
+        }
+
+        private void MapView_GeoViewTapped(object sender, GeoViewInputEventArgs e)
+        {
+            // Get the user-tapped location.
+            MapPoint mapLocation = e.Location;
+
+            // Project the map point to WGS84 for latitude/longitude display.
+            MapPoint projectedLocation = (MapPoint) GeometryEngine.Project(mapLocation, SpatialReferences.Wgs84);
+
+            // Format the display callout string based upon the projected map point (example: "Lat: 100.123, Long: 100.234").
+            string mapLocationDescription = $"Lat: {projectedLocation.Y:F3} Long:{projectedLocation.X:F3}";
+
+            // Create a new callout definition using the formatted string.
+            CalloutDefinition myCalloutDefinition = new CalloutDefinition("Location:", mapLocationDescription);
+
+            // Display the callout.
+            _myMapView.ShowCalloutAt(mapLocation, myCalloutDefinition);
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create a new basemap using the streets base layer
-            Basemap myBasemap = Basemap.CreateStreets();
-
-            // Create a new map based on the streets basemap
-            Map myMap = new Map(myBasemap);
-
-            // Assign the map to the MapView
-            _myMapView.Map = myMap;
-
-            // Wire up the MapView GeoVewTapped event
-            _myMapView.GeoViewTapped += _myMapView_GeoViewTapped;
-
-            // Add the MapView to the page
-            View.AddSubview(_myMapView);
+            Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            base.ViewDidLayoutSubviews();
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            UILabel helpLabel = new UILabel
+            {
+                Text = "Tap to show a callout.",
+                AdjustsFontSizeToFitWidth = true,
+                TextAlignment = UITextAlignment.Center,
+                BackgroundColor = UIColor.FromWhiteAlpha(0, .6f),
+                TextColor = UIColor.White,
+                Lines = 1,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, helpLabel);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+
+                helpLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                helpLabel.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                helpLabel.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                helpLabel.HeightAnchor.ConstraintEqualTo(40)
+            });
         }
 
-        private void _myMapView_GeoViewTapped(object sender, GeoViewInputEventArgs e)
+        public override void ViewWillAppear(bool animated)
         {
-            // Get the user-tapped location
-            MapPoint mapLocation = e.Location;
+            base.ViewWillAppear(animated);
 
-            // Project the user-tapped map point location to a geometry
-            Geometry myGeometry = GeometryEngine.Project(mapLocation, SpatialReferences.Wgs84);
+            // Subscribe to events.
+            _myMapView.GeoViewTapped += MapView_GeoViewTapped;
+        }
 
-            // Convert to geometry to a traditional Lat/Long map point
-            MapPoint projectedLocation = (MapPoint)myGeometry;
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
 
-            // Format the display callout string based upon the projected map point (example: "Lat: 100.123, Long: 100.234")
-            string mapLocationDescription = string.Format("Lat: {0:F3} Long:{1:F3}", projectedLocation.Y, projectedLocation.X);
-
-            // Create a new callout definition using the formatted string
-            CalloutDefinition myCalloutDefinition = new CalloutDefinition("Location:", mapLocationDescription);
-
-            // Display the callout
-            _myMapView.ShowCalloutAt(mapLocation, myCalloutDefinition);
+            // Unsubscribe from events, per best practice.
+            _myMapView.GeoViewTapped -= MapView_GeoViewTapped;
         }
     }
 }

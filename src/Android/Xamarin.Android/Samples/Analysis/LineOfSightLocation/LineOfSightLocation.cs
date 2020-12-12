@@ -16,16 +16,22 @@ using Esri.ArcGISRuntime.UI.Controls;
 using Esri.ArcGISRuntime.UI.GeoAnalysis;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
+namespace ArcGISRuntime.Samples.LineOfSightLocation
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Line of sight (location)",
+        category: "Analysis",
+        description: "Perform a line of sight analysis between two points in real time.",
+        instructions: "Tap to place the starting point for the line. Tap again to place the end point.",
+        tags: new[] { "3D", "line of sight", "visibility", "visibility analysis" })]
     public class LineOfSightLocation : Activity
     {
-        // Create and hold reference to the used MapView
-        private SceneView _mySceneView = new SceneView();
+        // Hold a reference to the scene view
+        private SceneView _mySceneView;
 
         // URL for an image service to use as an elevation source
-        private string _elevationSourceUrl = @"http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private string _elevationSourceUrl = @"https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         // Location line of sight analysis
         private LocationLineOfSight _lineOfSightAnalysis;
@@ -84,6 +90,12 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
 
         private void SceneViewTapped(object sender, GeoViewInputEventArgs e)
         {
+            // Ignore if tapped out of bounds (e.g. the sky).
+            if (e.Location == null)
+            {
+                return;
+            }
+
             // When the view is tapped, define the observer or target location with the tap point as appropriate
             if (_observerLocation == null)
             {
@@ -109,9 +121,10 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the scene view to the layout
+            _mySceneView = new SceneView(this);
             layout.AddView(_mySceneView);
 
             // Wire up tapped event for the scene view

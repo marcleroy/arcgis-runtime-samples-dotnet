@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISMapImageLayerUrl
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS map image layer",
+        category: "Layers",
+        description: "Add an ArcGIS Map Image Layer from a URL to a map.",
+        instructions: "",
+        tags: new[] { "ArcGIS dynamic map service layer", "ArcGISMapImageLayer", "layers" })]
     public class ArcGISMapImageLayerUrl : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -39,8 +45,8 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
             Map myMap = new Map();
 
             // Create uri to the map image layer
-            var serviceUri = new Uri(
-               "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer");
+            Uri serviceUri = new Uri(
+               "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer");
 
             // Create new image layer from the url
             ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(serviceUri);
@@ -55,9 +61,10 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

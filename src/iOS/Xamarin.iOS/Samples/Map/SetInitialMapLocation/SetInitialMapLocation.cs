@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,52 +12,56 @@ using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.SetInitialMapLocation
+namespace ArcGISRuntime.Samples.SetInitialMapLocation
 {
     [Register("SetInitialMapLocation")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Set initial map location",
+        category: "Map",
+        description: "Display a basemap centered at an initial location and scale.",
+        instructions: "When the map loads, note the specific location and scale of the initial map view.",
+        tags: new[] { "LOD", "basemap", "center", "envelope", "extent", "initial", "lat", "latitude", "level of detail", "location", "long", "longitude", "scale", "zoom level" })]
     public class SetInitialMapLocation : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public SetInitialMapLocation()
         {
             Title = "Set initial map location";
         }
 
+        private void Initialize()
+        {
+            // Show a map with 'Imagery with Labels' basemap and an initial location.
+            _myMapView.Map = new Map(BasemapType.ImageryWithLabels, -33.867886, -63.985, 16);
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            base.ViewDidLayoutSubviews();
-        }
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-        private void Initialize()
-        {
-            // Create a map with 'Imagery with Labels' basemap and an initial location
-            Map myMap = new Map(BasemapType.ImageryWithLabels, -33.867886, -63.985, 16);
-
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

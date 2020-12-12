@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISTiledLayerUrl
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS tiled layer",
+        category: "Layers",
+        description: "Load an ArcGIS tiled layer from a URL.",
+        instructions: "Launch the app to view the \"World Topographic Map\" tile layer as the basemap. ",
+        tags: new[] { "basemap", "layers", "raster tiles", "tiled layer", "visualization" })]
     public class ArcGISTiledLayerUrl : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -39,8 +45,8 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
             Map myMap = new Map();
 
             // Create uri to the tiled service
-            var serviceUri = new Uri(
-               "http://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer");
+            Uri serviceUri = new Uri(
+               "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer");
 
             // Create new tiled layer from the url
             ArcGISTiledLayer imageLayer = new ArcGISTiledLayer(serviceUri);
@@ -55,9 +61,10 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

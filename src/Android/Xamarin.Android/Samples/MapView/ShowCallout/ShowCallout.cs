@@ -15,26 +15,34 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 
-namespace ArcGISRuntimeXamarin.Samples.ShowCallout
+namespace ArcGISRuntime.Samples.ShowCallout
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Show callout",
+        category: "MapView",
+        description: "Show a callout with the latitude and longitude of user-tapped points.",
+        instructions: "Tap anywhere on the map. A callout showing the WGS84 coordinates for the tapped point will appear.",
+        tags: new[] { "balloon", "bubble", "callout", "flyout", "flyover", "info window", "popup", "tap" })]
     public class ShowCallout : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
             base.OnCreate(bundle);
 
+            CreateLayout();
+
             Initialize();
 
-            Title = "Show Callout";
+            Title = "Show callout";
         }
 
         private void Initialize()
         {
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            
 
             // Create a new basemap using the streets base layer
             Basemap myBasemap = Basemap.CreateStreets();
@@ -48,7 +56,25 @@ namespace ArcGISRuntimeXamarin.Samples.ShowCallout
             // Wire up the MapView GeoVewTapped event
             _myMapView.GeoViewTapped += _myMapView_GeoViewTapped;
 
+            
+        }
+
+        private void CreateLayout()
+        {
+            LinearLayout layout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
+
+            // Create and add a help label
+            TextView helpLabel = new TextView(this)
+            {
+                Text = "Tap to show a callout."
+            };
+            layout.AddView(helpLabel);
+
             // Add the MapView to the page
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Apply the layout to the app
@@ -67,7 +93,7 @@ namespace ArcGISRuntimeXamarin.Samples.ShowCallout
             MapPoint projectedLocation = (MapPoint)myGeometry;
 
             // Format the display callout string based upon the projected map point (example: "Lat: 100.123, Long: 100.234")
-            string mapLocationDescription = string.Format("Lat: {0:F3} Long:{1:F3}", projectedLocation.Y, projectedLocation.X);
+            string mapLocationDescription = $"Lat: {projectedLocation.Y:F3} Long:{projectedLocation.X:F3}";
 
             // Create a new callout definition using the formatted string
             CalloutDefinition myCalloutDefinition = new CalloutDefinition("Location:", mapLocationDescription);

@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,16 +12,19 @@ using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayMap
+namespace ArcGISRuntime.Samples.DisplayMap
 {
     [Register("DisplayMap")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display map",
+        category: "Map",
+        description: "Display a map with an imagery basemap.",
+        instructions: "Run the sample to view the map. Pan and zoom to navigate the map.",
+        tags: new[] { "basemap", "map" })]
     public class DisplayMap : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public DisplayMap()
         {
@@ -30,32 +33,35 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayMap
 
         private void Initialize()
         {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateImagery());
-
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
-            View.AddSubviews(_myMapView);
+            // Show an imagery basemap
+            _myMapView.Map = new Map(Basemap.CreateImagery());
         }
 
         public override void ViewDidLoad()
         {
-            CreateLayout();
-            Initialize();
-
             base.ViewDidLoad();
+            Initialize();
         }
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
 
-            base.ViewDidLayoutSubviews();
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
+            View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

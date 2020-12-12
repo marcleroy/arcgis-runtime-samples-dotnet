@@ -18,13 +18,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
+namespace ArcGISRuntime.Samples.StatisticalQuery
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Statistical query",
+        category: "Data",
+        description: "Query a table to get aggregated statistics back for a specific field.",
+        instructions: "Pan and zoom to define the extent for the query. Use the 'Cities in current extent' checkbox to control whether the query only includes features in the visible extent. Use the 'Cities grater than 5M' checkbox to filter the results to only those cities with a population greater than 5 million people. Tap 'Get statistics' to perform the query. The query will return population-based statistics from the combined results of all features matching the query criteria.",
+        tags: new[] { "analysis", "average", "bounding geometry", "filter", "intersect", "maximum", "mean", "minimum", "query", "spatial query", "standard deviation", "statistics", "sum", "variance" })]
     public class StatisticalQuery : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // URI for the world cities map service layer
         private Uri _worldCitiesServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0");
@@ -117,22 +123,29 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
                 statQueryParams.WhereClause = "POP_RANK = 1";
             }
 
-            // Execute the statistical query with these parameters and await the results
-            StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
+            try
+            {
+                // Execute the statistical query with these parameters and await the results
+                StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
 
-            // Display results in a list in a dialog
-            var statsList = statQueryResult.FirstOrDefault().Statistics.ToList();
-            ShowStatsList(statsList);
+                // Display results in a list in a dialog
+                List<KeyValuePair<string,object>> statsList = statQueryResult.First().Statistics.ToList();
+                ShowStatsList(statsList);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.Message).SetTitle("Error").Show();
+            }
         }
 
         private void ShowStatsList(IList<KeyValuePair<string, object>> stats)
         {
             // Create a list of statistics results (field names and values) to show in the list
             IList<string> statInfoList = new List<string>();
-            foreach (var kvp in stats)
+            foreach (KeyValuePair<string,object> kvp in stats)
             {
                 // If the value is null, display "--"
-                var displayString = "--";
+                string displayString = "--";
 
                 if (kvp.Value != null)
                 {
@@ -143,12 +156,14 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
             }
 
             // Create an array adapter for the stats list
-            var statsArrayAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleListItem1, statInfoList);
+            ArrayAdapter<string> statsArrayAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleListItem1, statInfoList);
             statsArrayAdapter.SetDropDownViewResource(Android.Resource.Layout.SimpleListItem1);
 
             // Create a list view to display the results
-            var statsListView = new ListView(this);
-            statsListView.Adapter = statsArrayAdapter;
+            ListView statsListView = new ListView(this)
+            {
+                Adapter = statsArrayAdapter
+            };
 
             // Show the list view in a dialog
             AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
@@ -162,14 +177,20 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
             _controlsLayout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create switches for controlling which features are included in the query
-            _onlyBigCitiesSwitch = new Switch(this);
-            _onlyBigCitiesSwitch.Text = "Only cities over 5M";
-            _onlyInExtentSwitch = new Switch(this);
-            _onlyInExtentSwitch.Text = "Only in current extent";
+            _onlyBigCitiesSwitch = new Switch(this)
+            {
+                Text = "Only cities over 5M"
+            };
+            _onlyInExtentSwitch = new Switch(this)
+            {
+                Text = "Only in current extent"
+            };
 
             // Create a Button to execute the statistical query
-            var getStatsButton = new Button(this);
-            getStatsButton.Text = "Get Statistics";
+            Button getStatsButton = new Button(this)
+            {
+                Text = "Get Statistics"
+            };
             getStatsButton.Click += OnExecuteStatisticsQueryClicked;
 
             // Add the query controls to the layout
@@ -178,6 +199,7 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
             _controlsLayout.AddView(getStatsButton);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             _controlsLayout.AddView(_myMapView);
 
             // Show the layout in the app

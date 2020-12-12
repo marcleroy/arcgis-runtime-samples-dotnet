@@ -16,26 +16,30 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Linq;
 
-namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
+namespace ArcGISRuntime.Samples.OpenMapURL
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Open map URL",
+        category: "Map",
+        description: "Display a web map.",
+        instructions: "A web map can be selected from the drop-down list. On selection the web map displays in the map view.",
+        tags: new[] { "portal item", "web map" })]
     public class OpenMapURL : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // String array to hold urls to publicly available web maps
-        private string[] itemURLs = new string[]
-        {
-            "http://www.arcgis.com/home/item.html?id=2d6fa24b357d427f9c737774e7b0f977",
-            "http://www.arcgis.com/home/item.html?id=01f052c8995e4b9e889d73c3e210ebe3",
-            "http://www.arcgis.com/home/item.html?id=92ad152b9da94dee89b9e387dfe21acd"
+        private string[] itemURLs = {
+            "https://www.arcgis.com/home/item.html?id=392451c381ad4109bf04f7bd442bc038",
+            "https://www.arcgis.com/home/item.html?id=01f052c8995e4b9e889d73c3e210ebe3",
+            "https://www.arcgis.com/home/item.html?id=92ad152b9da94dee89b9e387dfe21acd"
         };
 
         // String array to store titles for the webmaps specified above. These titles are in the same order as the urls above
-        private string[] titles = new string[]
-        {
-            "Housing with Mortgages",
+        private string[] titles = {
+            "Population Pressure",
             "USA Tapestry Segmentation",
             "Geology of United States"
         };
@@ -62,14 +66,14 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
 
         private void OnMapsClicked(object sender, EventArgs e)
         {
-            var mapsButton = sender as Button;
+            Button mapsButton = (Button)sender;
 
             // Create menu to show map options
-            var mapsMenu = new PopupMenu(this, mapsButton);
+            PopupMenu mapsMenu = new PopupMenu(this, mapsButton);
             mapsMenu.MenuItemClick += OnMapsMenuItemClicked;
 
             // Create menu options
-            foreach (var title in titles)
+            foreach (string title in titles)
                 mapsMenu.Menu.Add(title);
 
             // Show menu in the view
@@ -79,10 +83,10 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
         private void OnMapsMenuItemClicked(object sender, PopupMenu.MenuItemClickEventArgs e)
         {
             // Get title from the selected item
-            var selectedMapTitle = e.Item.TitleCondensedFormatted.ToString();
+            string selectedMapTitle = e.Item.TitleCondensedFormatted.ToString();
 
             // Get index that is used to get the selected url
-            var selectedIndex = titles.ToList().IndexOf(selectedMapTitle);
+            int selectedIndex = titles.ToList().IndexOf(selectedMapTitle);
 
             // Create a new Map instance with url of the webmap that selected
             _myMapView.Map = new Map(new Uri(itemURLs[selectedIndex]));
@@ -91,17 +95,20 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create button to show possible map options
-            var mapsButton = new Button(this);
-            mapsButton.Text = "Maps";
+            Button mapsButton = new Button(this)
+            {
+                Text = "Maps"
+            };
             mapsButton.Click += OnMapsClicked;
 
             // Add maps button to the layout
             layout.AddView(mapsButton);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

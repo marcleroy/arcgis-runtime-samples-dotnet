@@ -7,82 +7,82 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
+using System.IO;
 using System.Linq;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
-using System.IO;
-using ArcGISRuntimeXamarin.Managers;
 
-namespace ArcGISRuntimeXamarin.Samples.OpenMobileMap
+namespace ArcGISRuntime.Samples.OpenMobileMap
 {
     [Register("OpenMobileMap")]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("e1f3a7254cb845b09450f54937c16061")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Open mobile map package",
+        category: "Map",
+        description: "Display a map from a mobile map package.",
+        instructions: "When the sample opens, it will automatically display the map in the mobile map package. Pan and zoom to observe the data from the mobile map package.",
+        tags: new[] { "mmpk", "mobile map package", "offline" })]
     public class OpenMobileMap : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public OpenMobileMap()
         {
             Title = "Open mobile map (map package)";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-            CreateLayout();
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            base.ViewDidLayoutSubviews();
-
-            // Update the UI to account for new layout
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-        }
-
         private async void Initialize()
         {
-            // Get the path to the mobile map package
-            string filepath = GetMmpkPath();
+            // Get the path to the mobile map package.
+            string filepath = DataManager.GetDataFolder("e1f3a7254cb845b09450f54937c16061", "Yellowstone.mmpk");
 
-            // Open the map package
-            MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
-
-            // Check that there is at least one map
-            if (myMapPackage.Maps.Count > 0)
+            try
             {
-                // Display the first map in the package
+                // Open the map package.
+                MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
+
+                // Load the package.
+                await myMapPackage.LoadAsync();
+
+                // Display the first map in the package.
                 _myMapView.Map = myMapPackage.Maps.First();
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
             }
         }
 
-        /// <summary>
-        /// This abstracts away platform & sample viewer-specific code for accessing local files
-        /// </summary>
-        /// <returns>String that is the path to the file on disk</returns>
-        private string GetMmpkPath()
+        public override void ViewDidLoad()
         {
-            #region offlinedata
-
-            // The mobile map package will be downloaded from ArcGIS Online
-            // The desired MMPK is expected to be called Yellowstone.mmpk
-            string filename = "Yellowstone.mmpk";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-			// Return the full path; Item ID is e1f3a7254cb845b09450f54937c16061
-			return Path.Combine(folder, "SampleData", "OpenMobileMap", filename);
-            #endregion offlinedata
+            base.ViewDidLoad();
+            Initialize();
         }
 
-        private void CreateLayout()
+        public override void LoadView()
         {
-            // Add MapView to the page
-            View.AddSubview(_myMapView);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
+            View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

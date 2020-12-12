@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,8 +14,14 @@ using System;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
+namespace ArcGISRuntime.Samples.AnalyzeHotspots
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Analyze hotspots",
+        category: "Geoprocessing",
+        description: "Use a geoprocessing service and a set of features to identify statistically significant hot spots and cold spots.",
+        instructions: "Select a date range (between 1998-01-01 and 1998-05-31) from the dialog and tap on Analyze. The results will be shown on the map upon successful completion of the `GeoprocessingJob`.",
+        tags: new[] { "Geoprocessing", "GeoprocessingJob", "GeoprocessingParameters", "GeoprocessingResult" })]
     public partial class AnalyzeHotspots : ContentPage
     {
 
@@ -33,8 +39,6 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
         {
             InitializeComponent();
 
-            Title = "Analyze Hotspots";
-
             // Create the UI, setup the control references and execute initialization 
             Initialize();
         }
@@ -42,13 +46,17 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
         private async void Initialize()
         {
             // Create a map with a topographic basemap
-            Map myMap = new Map(Basemap.CreateTopographic());
+            MyMapView.Map = new Map(Basemap.CreateTopographic());
 
-            // Create a new geoprocessing task
-            _hotspotTask = await GeoprocessingTask.CreateAsync(new Uri(_hotspotUrl));
-
-            // Assign the map to the MapView
-            MyMapView.Map = myMap;
+            try
+            {
+                // Create a new geoprocessing task
+                _hotspotTask = await GeoprocessingTask.CreateAsync(new Uri(_hotspotUrl));
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private async void OnRunAnalysisClicked(object sender, EventArgs e)
@@ -60,29 +68,11 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
             MyActivityIndicator.IsVisible = true;
             MyActivityIndicator.IsRunning = true;
 
-            // Get the 'from' and 'to' dates from the date pickers for the geoprocessing analysis
-            DateTime myFromDate;
-            DateTime myToDate;
-            try
-            {
-                myFromDate = Convert.ToDateTime(StartDate.Text);
-                myToDate = Convert.ToDateTime(EndDate.Text);
-            } catch (Exception)
-            {
-                // Handle badly formatted dates
-                await DisplayAlert("Invalid date", "Please enter a valid date", "OK");
-
-                // Remove the busy activity indication
-                MyActivityIndicator.IsRunning = false;
-                MyActivityIndicator.IsVisible = false;
-                return;
-            }
-
             // The end date must be at least one day after the start date
-            if (myToDate <= myFromDate.AddDays(1))
+            if (EndDate.Date <= StartDate.Date.AddDays(1))
             {
                 // Show error message
-                await DisplayAlert("Invalid date range", "Please select valid time range. There has to be at least one day in between To and From dates.", "OK");
+                await Application.Current.MainPage.DisplayAlert("Invalid date range", "Please select valid time range. There has to be at least one day in between To and From dates.", "OK");
 
                 // Remove the busy activity indication
                 MyActivityIndicator.IsRunning = false;
@@ -94,9 +84,7 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
             GeoprocessingParameters myHotspotParameters = new GeoprocessingParameters(GeoprocessingExecutionType.AsynchronousSubmit);
 
             // Construct the date query
-            var myQueryString = string.Format("(\"DATE\" > date '{0} 00:00:00' AND \"DATE\" < date '{1} 00:00:00')",
-                myFromDate.ToString("yyyy-MM-dd"),
-                myToDate.ToString("yyyy-MM-dd"));
+            string myQueryString = $"(\"DATE\" > date '{StartDate.Date:yyyy-MM-dd} 00:00:00' AND \"DATE\" < date '{EndDate.Date:yyyy-MM-dd} 00:00:00')";
 
             // Add the query that contains the date range used in the analysis
             myHotspotParameters.Inputs.Add("Query", new GeoprocessingString(myQueryString));
@@ -127,11 +115,11 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
                 // Display error messages if the geoprocessing task fails
                 if (_hotspotJob.Status == JobStatus.Failed && _hotspotJob.Error != null)
                 {
-                    await DisplayAlert("Geoprocessing error", "Executing geoprocessing failed. " + _hotspotJob.Error.Message, "OK");
+                    await Application.Current.MainPage.DisplayAlert("Geoprocessing error", "Executing geoprocessing failed. " + _hotspotJob.Error.Message, "OK");
                 }
                 else
                 {
-                    await DisplayAlert("Sample error", "An error occurred. " + ex.ToString(), "OK");
+                    await Application.Current.MainPage.DisplayAlert("Sample error", "An error occurred. " + ex.ToString(), "OK");
                 }
             }
             finally

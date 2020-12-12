@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,8 +14,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ChangeViewpoint
+namespace ArcGISRuntime.Samples.ChangeViewpoint
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Change viewpoint",
+        category: "MapView",
+        description: "Set the map view to a new viewpoint.",
+        instructions: "The map view has several methods for setting its current viewpoint. Select a viewpoint from the UI to see the viewpoint changed using that method.",
+        tags: new[] { "animate", "extent", "pan", "rotate", "scale", "view", "zoom" })]
     public partial class ChangeViewpoint : ContentPage
     {
         // Coordinates for London
@@ -45,8 +51,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeViewpoint
             SpatialReferences.WebMercator);
 
         // String array to store titles for the viewpoints specified above.
-        private string[] titles = new string[]
-        {
+        private string[] titles = {
             "Geometry",
             "Center & Scale",
             "Animate"
@@ -55,8 +60,6 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeViewpoint
         public ChangeViewpoint()
         {
             InitializeComponent ();
-
-            Title = "Change viewpoint";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -73,45 +76,52 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeViewpoint
 
         private async void OnViewpointsClicked(object sender, EventArgs e)
         {
-            // Show sheet and get title from the selection
-            var selectedMapTitle =
-                await DisplayActionSheet("Select viewpoint", "Cancel", null, titles);
-
-            // If selected cancel do nothing
-            if (selectedMapTitle == "Cancel") return;
-
-            switch (selectedMapTitle)
+            try
             {
-                case "Geometry":
+                // Show sheet and get title from the selection
+                string selectedMapTitle =
+                    await ((Page)Parent).DisplayActionSheet("Select viewpoint", "Cancel", null, titles);
+
+                // If selected cancel do nothing
+                if (selectedMapTitle == "Cancel") return;
+
+                switch (selectedMapTitle)
+                {
+                    case "Geometry":
    
-                    // Set Viewpoint using Redlands envelope defined above and a padding of 20
-                    await MyMapView.SetViewpointGeometryAsync(RedlandsEnvelope, 20);
-                    break;
+                        // Set Viewpoint using Redlands envelope defined above and a padding of 20
+                        await MyMapView.SetViewpointGeometryAsync(RedlandsEnvelope, 20);
+                        break;
 
-                case "Center & Scale":
+                    case "Center & Scale":
                     
-                    // Set Viewpoint so that it is centered on the London coordinates defined above
-                    await MyMapView.SetViewpointCenterAsync(LondonCoords);
+                        // Set Viewpoint so that it is centered on the London coordinates defined above
+                        await MyMapView.SetViewpointCenterAsync(LondonCoords);
                     
-                    // Set the Viewpoint scale to match the specified scale 
-                    await MyMapView.SetViewpointScaleAsync(LondonScale);
-                    break;
+                        // Set the Viewpoint scale to match the specified scale 
+                        await MyMapView.SetViewpointScaleAsync(LondonScale);
+                        break;
 
-                case "Animate":
+                    case "Animate":
                     
-                    // Navigate to full extent of the first baselayer before animating to specified geometry
-                    await MyMapView.SetViewpointAsync(
-                        new Viewpoint(MyMapView.Map.Basemap.BaseLayers.First().FullExtent));
+                        // Navigate to full extent of the first baselayer before animating to specified geometry
+                        await MyMapView.SetViewpointAsync(
+                            new Viewpoint(MyMapView.Map.Basemap.BaseLayers.First().FullExtent));
                     
-                    // Create a new Viewpoint using the specified geometry
-                    var viewpoint = new Viewpoint(EdinburghEnvelope);
+                        // Create a new Viewpoint using the specified geometry
+                        Viewpoint viewpoint = new Viewpoint(EdinburghEnvelope);
                     
-                    // Set Viewpoint of MapView to the Viewpoint created above and animate to it using a timespan of 5 seconds
-                    await MyMapView.SetViewpointAsync(viewpoint, TimeSpan.FromSeconds(5));
-                    break;
+                        // Set Viewpoint of MapView to the Viewpoint created above and animate to it using a timespan of 5 seconds
+                        await MyMapView.SetViewpointAsync(viewpoint, TimeSpan.FromSeconds(5));
+                        break;
 
-                default:
-                    break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
             }
         }
     }

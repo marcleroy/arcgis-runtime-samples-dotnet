@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,15 +12,19 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.SetMapSpatialReference
+namespace ArcGISRuntime.Samples.SetMapSpatialReference
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map spatial reference",
+        category: "Map",
+        description: "Specify a map's spatial reference.",
+        instructions: "Pan and zoom around the map. Observe how the map is displayed using the World Bonne spatial reference.",
+        tags: new[] { "SpatialReference", "WKID", "project" })]
     public partial class SetMapSpatialReference : ContentPage
     {
         public SetMapSpatialReference()
         {
             InitializeComponent ();
-
-            Title = "Set map spatial reference";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();

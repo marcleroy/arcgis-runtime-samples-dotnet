@@ -1,0 +1,42 @@
+{
+    "category": "Geoprocessing",
+    "description": "Connect to a service and list versions of the geodatabase.",
+    "formal_name": "ListGeodatabaseVersions",
+    "ignore": false,
+    "images": [
+        "ListGeodatabaseVersions.jpg"
+    ],
+    "keywords": [
+        "conflict resolution",
+        "data management",
+        "database",
+        "multi-user",
+        "sync",
+        "version"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Android": "100.9.0"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/android/sample-code/listgeodatabaseversions.htm"
+    ],
+    "relevant_apis": [
+        "GeoprocessingFeatures",
+        "GeoprocessingFeatures.Features",
+        "GeoprocessingJob",
+        "GeoprocessingJob.GetResultAsync",
+        "GeoprocessingParameters",
+        "GeoprocessingResult",
+        "GeoprocessingResult.Outputs",
+        "GeoprocessingTask",
+        "GeoprocessingTask.CreateDefaultParametersAsync",
+        "GeoprocessingTask.CreateJob"
+    ],
+    "snippets": [
+        "../../../Resources/layout/ListGeodatabaseVersions.axml",
+        "ListGeodatabaseVersions.cs"
+    ],
+    "title": "List geodatabase versions"
+}

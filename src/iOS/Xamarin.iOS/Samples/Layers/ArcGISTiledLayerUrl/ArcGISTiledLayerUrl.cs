@@ -7,68 +7,74 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISTiledLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISTiledLayerUrl
 {
     [Register("ArcGISTiledLayerUrl")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS tiled layer",
+        category: "Layers",
+        description: "Load an ArcGIS tiled layer from a URL.",
+        instructions: "Launch the app to view the \"World Topographic Map\" tile layer as the basemap. ",
+        tags: new[] { "basemap", "layers", "raster tiles", "tiled layer", "visualization" })]
     public class ArcGISTiledLayerUrl : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public ArcGISTiledLayerUrl()
         {
             Title = "ArcGIS tiled layer (URL)";
         }
 
+        private void Initialize()
+        {
+            // Create new Map.
+            Map map = new Map();
+
+            // Create URI to the tiled service.
+            Uri serviceUri = new Uri("https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer");
+
+            // Create new tiled layer from the URL.
+            ArcGISTiledLayer imageLayer = new ArcGISTiledLayer(serviceUri);
+
+            // Add created layer to the basemaps collection.
+            map.Basemap.BaseLayers.Add(imageLayer);
+
+            // Assign the map to the MapView.
+            _myMapView.Map = map;
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-             // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            base.ViewDidLayoutSubviews();
-        }
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-        private void Initialize()
-        {
-            // Create new Map
-            Map myMap = new Map();
-
-            // Create uri to the tiled service
-            var serviceUri = new Uri(
-               "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer");
-
-            // Create new tiled layer from the url
-            ArcGISTiledLayer imageLayer = new ArcGISTiledLayer(serviceUri);
-
-            // Add created layer to the basemaps collection
-            myMap.Basemap.BaseLayers.Add(imageLayer);
-
-            // Assign the map to the MapView
-            _myMapView.Map = myMap;
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

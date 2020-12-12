@@ -19,12 +19,19 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace ArcGISRuntimeXamarin.Samples.CreateFeatureCollectionLayer
+namespace ArcGISRuntime.Samples.CreateFeatureCollectionLayer
 {
-    [Activity(Label = "CreateFeatureCollectionLayer")]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature collection layer",
+        category: "Layers",
+        description: "Create a Feature Collection Layer from a Feature Collection Table, and add it to a map.",
+        instructions: "When launched, this sample displays a `FeatureCollectionLayer` with a `Point`, `Polyline` and `Polygon` geometry.",
+        tags: new[] { "Layers", "feature collection" })]
     public class CreateFeatureCollectionLayer : Activity
     {
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view.
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -41,22 +48,12 @@ namespace ArcGISRuntimeXamarin.Samples.CreateFeatureCollectionLayer
 
         private void Initialize()
         {
-            try
-            {
-                // Create a new map with the oceans basemap and add it to the map view
-                Map myMap = new Map(Basemap.CreateOceans());
-                _myMapView.Map = myMap;
+            // Create a new map with the oceans basemap and add it to the map view
+            Map myMap = new Map(Basemap.CreateOceans());
+            _myMapView.Map = myMap;
 
-                // Call a function that will create a new feature collection layer and zoom to it
-                CreateNewFeatureCollection();
-            }
-            catch (Exception ex)
-            {
-                var alertBuilder = new AlertDialog.Builder(this);
-                alertBuilder.SetTitle("Error");
-                alertBuilder.SetMessage("Unable to create feature collection layer: " + ex.Message);
-                alertBuilder.Show();
-            }
+            // Call a function that will create a new feature collection layer and zoom to it
+            CreateNewFeatureCollection();
         }
 
         private async void CreateNewFeatureCollection()
@@ -107,25 +104,33 @@ namespace ArcGISRuntimeXamarin.Samples.CreateFeatureCollectionLayer
             Polygon poly = new Polygon(new MapPoint[] { point1, point3, point4 });
             polyFeature.Geometry = poly;
 
-            // Add the new features to the appropriate feature collection table 
-            await pointsTable.AddFeatureAsync(pointFeature);
-            await linesTable.AddFeatureAsync(lineFeature);
-            await polysTable.AddFeatureAsync(polyFeature);
+            try
+            {
+                // Add the new features to the appropriate feature collection table 
+                await pointsTable.AddFeatureAsync(pointFeature);
+                await linesTable.AddFeatureAsync(lineFeature);
+                await polysTable.AddFeatureAsync(polyFeature);
 
-            // Create a feature collection and add the feature collection tables
-            FeatureCollection featuresCollection = new FeatureCollection();
-            featuresCollection.Tables.Add(pointsTable);
-            featuresCollection.Tables.Add(linesTable);
-            featuresCollection.Tables.Add(polysTable);
+                // Create a feature collection and add the feature collection tables
+                FeatureCollection featuresCollection = new FeatureCollection();
+                featuresCollection.Tables.Add(pointsTable);
+                featuresCollection.Tables.Add(linesTable);
+                featuresCollection.Tables.Add(polysTable);
 
-            // Create a FeatureCollectionLayer 
-            FeatureCollectionLayer collectionLayer = new FeatureCollectionLayer(featuresCollection);
+                // Create a FeatureCollectionLayer 
+                FeatureCollectionLayer collectionLayer = new FeatureCollectionLayer(featuresCollection);
 
-            // When the layer loads, zoom the map view to the extent of the feature collection
-            collectionLayer.Loaded += (s,e)=> _myMapView.SetViewpointAsync(new Viewpoint(collectionLayer.FullExtent));
+                // When the layer loads, zoom the map centered on the feature collection
+                await collectionLayer.LoadAsync();
+                await _myMapView.SetViewpointCenterAsync(collectionLayer.FullExtent.GetCenter(), 1000000);
 
-            // Add the layer to the Map's Operational Layers collection
-            _myMapView.Map.OperationalLayers.Add(collectionLayer);
+                // Add the layer to the Map's Operational Layers collection
+                _myMapView.Map.OperationalLayers.Add(collectionLayer);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private Renderer CreateRenderer(GeometryType rendererType)
@@ -146,7 +151,7 @@ namespace ArcGISRuntimeXamarin.Samples.CreateFeatureCollectionLayer
                     break;
                 case GeometryType.Polygon:
                     // Create a fill symbol
-                    var lineSym = new SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.DarkBlue, 2);
+                    SimpleLineSymbol lineSym = new SimpleLineSymbol(SimpleLineSymbolStyle.Solid, Color.DarkBlue, 2);
                     sym = new SimpleFillSymbol(SimpleFillSymbolStyle.DiagonalCross, Color.Cyan, lineSym);
                     break;
                 default:
@@ -160,9 +165,10 @@ namespace ArcGISRuntimeXamarin.Samples.CreateFeatureCollectionLayer
         private void CreateLayout()
         {
             // Create a new layout
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

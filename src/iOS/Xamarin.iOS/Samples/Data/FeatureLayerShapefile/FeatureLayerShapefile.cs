@@ -7,99 +7,87 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System.IO;
-using System.Threading.Tasks;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerShapefile
+namespace ArcGISRuntime.Samples.FeatureLayerShapefile
 {
     [Register("FeatureLayerShapefile")]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("d98b3e5293834c5f852f13c569930caa")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer (shapefile)",
+        category: "Data",
+        description: "Open a shapefile stored on the device and display it as a feature layer with default symbology.",
+        instructions: "Pan and zoom around the map to observe the data from the shapefile.",
+        tags: new[] { "layers", "shapefile", "shp", "vector" })]
     public class FeatureLayerShapefile : UIViewController
     {
-        // Create a MapView control to display a map
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public FeatureLayerShapefile()
         {
             Title = "Feature layer (shapefile)";
         }
 
+        private async void Initialize()
+        {
+            // Create a new map to display in the map view with a streets basemap.
+            _myMapView.Map = new Map(Basemap.CreateStreetsVector());
+
+            // Get the path to the downloaded shapefile.
+            string filepath = DataManager.GetDataFolder("d98b3e5293834c5f852f13c569930caa", "Public_Art.shp");
+
+            try
+            {
+                // Open the shapefile.
+                ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
+
+                // Create a feature layer to display the shapefile.
+                FeatureLayer newFeatureLayer = new FeatureLayer(myShapefile);
+
+                // Add the feature layer to the map.
+                _myMapView.Map.OperationalLayers.Add(newFeatureLayer);
+
+                // Zoom the map to the extent of the shapefile.
+                await _myMapView.SetViewpointGeometryAsync(newFeatureLayer.FullExtent, 50);
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            CreateLayout();
-
-            // Download (if necessary) and add a local shapefile dataset to the map
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            base.ViewDidLayoutSubviews();
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            // Update the UI to account for new layout
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-        }
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-        private async void Initialize()
-        {
-            // Create a new map to display in the map view with a streets basemap
-            _myMapView.Map = new Map(Basemap.CreateStreetsVector());
+            // Add the views.
+            View.AddSubviews(_myMapView);
 
-            // Get the path to the downloaded shapefile
-            string filepath = await GetShapefilePath();
-
-            // Open the shapefile
-            ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
-
-            // Create a feature layer to display the shapefile
-            FeatureLayer newFeatureLayer = new FeatureLayer(myShapefile);
-
-            // Add the feature layer to the map
-            _myMapView.Map.OperationalLayers.Add(newFeatureLayer);
-
-            // Zoom the map to the extent of the shapefile
-            await _myMapView.SetViewpointGeometryAsync(newFeatureLayer.FullExtent);
-        }
-
-        private async Task<string> GetShapefilePath()
-        {
-            #region offlinedata
-            // The shapefile will be downloaded from ArcGIS Online
-            // The data manager (a component of the sample viewer, *NOT* the runtime
-            //     handles the offline data process
-
-            // The desired shapefile is expected to be called "Public_Art.shp"
-            string filename = "Public_Art.shp";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "FeatureLayerShapefile", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
             {
-                // Download the shapefile
-                await DataManager.GetData("d98b3e5293834c5f852f13c569930caa", "FeatureLayerShapefile");
-            }
-
-            // Return the path
-            return filepath;
-            #endregion offlinedata
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
-            View.AddSubview(_myMapView);
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

@@ -7,103 +7,99 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Rasters;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterLayerGeoPackage
+namespace ArcGISRuntime.Samples.RasterLayerGeoPackage
 {
     [Register("RasterLayerGeoPackage")]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("68ec42517cdd439e81b036210483e8e7")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster layer (GeoPackage)",
+        category: "Data",
+        description: "Display a raster contained in a GeoPackage.",
+        instructions: "When the sample starts, a raster will be loaded from a GeoPackage and displayed in the map view.",
+        tags: new[] { "OGC", "container", "data", "image", "import", "layer", "package", "raster", "visualization" })]
     public class RasterLayerGeoPackage : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public RasterLayerGeoPackage()
         {
             Title = "Raster layer (GeoPackage)";
         }
 
+        private async void Initialize()
+        {
+            // Create a new map.
+            _myMapView.Map = new Map(Basemap.CreateLightGrayCanvas());
+
+            // Get the GeoPackage path.
+            string geoPackagePath = DataManager.GetDataFolder("68ec42517cdd439e81b036210483e8e7", "AuroraCO.gpkg");
+
+            try
+            {
+                // Open the GeoPackage.
+                GeoPackage geoPackage = await GeoPackage.OpenAsync(geoPackagePath);
+
+                // Read the raster images and get the first one.
+                Raster gpkgRaster = geoPackage.GeoPackageRasters.FirstOrDefault();
+
+                // Make sure an image was found in the package.
+                if (gpkgRaster == null)
+                {
+                    return;
+                }
+
+                // Create a layer to show the raster.
+                RasterLayer newLayer = new RasterLayer(gpkgRaster);
+                await newLayer.LoadAsync();
+
+                // Set the viewpoint.
+                await _myMapView.SetViewpointAsync(new Viewpoint(newLayer.FullExtent));
+
+                // Add the image as a raster layer to the map (with default symbology).
+                _myMapView.Map.OperationalLayers.Add(newLayer);
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-            CreateLayout();
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            base.ViewDidLayoutSubviews();
+            // Create the views.
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Update the UI to account for new layout
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-        }
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-        private async void Initialize()
-        {
-            // Create a new map centered on Aurora Colorado
-            _myMapView.Map = new Map(BasemapType.LightGrayCanvas, 39.5517, -104.8589, 12);
+            // Add the views.
+            View.AddSubviews(_myMapView);
 
-            // Get the full path
-            string geoPackagePath = await GetGeoPackagePath();
-
-            // Open the GeoPackage
-            GeoPackage myGeoPackage = await GeoPackage.OpenAsync(geoPackagePath);
-
-            // Read the raster images and get the first one
-            Raster gpkgRaster = myGeoPackage.GeoPackageRasters.FirstOrDefault();
-
-            // Make sure an image was found in the package
-            if (gpkgRaster == null) { return; }
-
-            // Create a layer to show the raster
-            RasterLayer newLayer = new RasterLayer(gpkgRaster);
-            await newLayer.LoadAsync();
-
-            // Add the image as a raster layer to the map (with default symbology)
-            _myMapView.Map.OperationalLayers.Add(newLayer);
-        }
-
-        private async Task<string> GetGeoPackagePath()
-        {
-            #region offlinedata
-
-            // The GeoPackage will be downloaded from ArcGIS Online.
-            // The data manager (a component of the sample viewer), *NOT* the runtime handles the offline data process
-
-            // The desired GPKG is expected to be called "AuroraCO.shp"
-            string filename = "AuroraCO.gpkg";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "RasterLayerGeoPackage", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
             {
-                // If it's missing, download the GeoPackage
-                await DataManager.GetData("68ec42517cdd439e81b036210483e8e7", "RasterLayerGeoPackage");
-            }
-
-            // Return the path
-            return filepath;
-
-            #endregion offlinedata
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
-            View.AddSubview(_myMapView);
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

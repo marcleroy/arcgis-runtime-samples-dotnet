@@ -13,21 +13,29 @@ using Android.Widget;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
+using Esri.ArcGISRuntime.Geometry;
 
-namespace ArcGISRuntimeXamarin.Samples.SceneLayerUrl
+namespace ArcGISRuntime.Samples.SceneLayerUrl
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Scene layer (URL)",
+        category: "Layers",
+        description: "Display an ArcGIS scene layer from a URL.",
+        instructions: "Pan and zoom to explore the scene.",
+        tags: new[] { "3D", "Portland", "URL", "buildings", "model", "scene", "service" })]
     public class SceneLayerUrl : Activity
     {
-        // Create a new SceneView control
-        private SceneView _mySceneView = new SceneView();
+        // Hold a reference to the scene view.
+        private SceneView _mySceneView;
 
-        // URL for a service to use as an elevation source
-        private Uri _elevationSourceUrl = new Uri(@"https://scene.arcgis.com/arcgis/rest/services/BREST_DTM_1M/ImageServer");
+        // URL for a service to use as an elevation source.
+        private readonly Uri _elevationSourceUrl = new Uri(
+            "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer");
 
-        // URL for the scene layer
-        private Uri _serviceUri = new Uri(
-               "https://scene.arcgis.com/arcgis/rest/services/Hosted/Buildings_Brest/SceneServer/0");
+        // URL for the scene layer.
+        private readonly Uri _serviceUri = new Uri(
+            "https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/Buildings_Portland/SceneServer");
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -35,48 +43,58 @@ namespace ArcGISRuntimeXamarin.Samples.SceneLayerUrl
 
             Title = "ArcGIS scene layer (URL)";
 
-            // Execute initialization
             CreateLayout();
             Initialize();
         }
 
-        private void Initialize()
+        private async void Initialize()
         {
-            // Create new Scene
-            Scene myScene = new Scene();
+            // Create new Scene.
+            Scene myScene = new Scene {Basemap = Basemap.CreateImagery()};
 
-            // Set Scene's base map property
-            myScene.Basemap = Basemap.CreateImagery();
-
-            // Create and add an elevation source for the Scene
+            // Create and add an elevation source for the Scene.
             ArcGISTiledElevationSource elevationSrc = new ArcGISTiledElevationSource(_elevationSourceUrl);
             myScene.BaseSurface.ElevationSources.Add(elevationSrc);
 
-            // Create new scene layer from the url
+            // Create new scene layer from the URL.
             ArcGISSceneLayer sceneLayer = new ArcGISSceneLayer(_serviceUri);
 
-            // Add created layer to the operational layers collection
+            // Add created layer to the operational layers collection.
             myScene.OperationalLayers.Add(sceneLayer);
 
-            // Create a camera with coordinates showing layer data
-            Camera camera = new Camera(48.378, -4.494, 200, 345, 65, 0);
+            try
+            {
+                // Load the layer.
+                await sceneLayer.LoadAsync();
 
-            // Assign the Scene to the SceneView
-            _mySceneView.Scene = myScene;
+                // Get the center of the scene layer.
+                MapPoint center = (MapPoint)GeometryEngine.Project(sceneLayer.FullExtent.GetCenter(), SpatialReferences.Wgs84);
 
-            // Set view point of scene view using camera
-            _mySceneView.SetViewpointCameraAsync(camera);
+                // Create a camera with coordinates showing layer data.
+                Camera camera = new Camera(center.Y, center.X, 225, 220, 80, 0);
+
+                // Assign the Scene to the SceneView.
+                _mySceneView.Scene = myScene;
+
+                // Set view point of scene view using camera.
+                await _mySceneView.SetViewpointCameraAsync(camera);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
-            // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            // Create a new vertical layout for the app.
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Add the scene view to the layout
+            // Add the scene view to the layout.
+            _mySceneView = new SceneView(this);
             layout.AddView(_mySceneView);
 
-            // Show the layout in the app
+            // Show the layout in the app.
             SetContentView(layout);
         }
     }

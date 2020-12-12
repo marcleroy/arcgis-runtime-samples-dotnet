@@ -16,13 +16,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
+namespace ArcGISRuntime.Samples.FeatureLayerDefinitionExpression
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer definition expression",
+        category: "Layers",
+        description: "Limit the features displayed on a map with a definition expression.",
+        instructions: "Press the 'Apply Expression' button to limit the features requested from the feature layer to those specified by the SQL query definition expression. Tap the 'Reset Expression' button to remove the definition expression on the feature layer, which returns all the records.",
+        tags: new[] { "SQL", "definition expression", "filter", "limit data", "query", "restrict data", "where clause" })]
     public class FeatureLayerDefinitionExpression : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Create and hold reference to the feature layer
         private FeatureLayer _featureLayer;
@@ -38,7 +44,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Create new Map with basemap
             Map myMap = new Map(Basemap.CreateTopographic());
@@ -53,7 +59,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
             _myMapView.Map = myMap;
 
             // Create the uri for the feature service
-            Uri featureServiceUri = new Uri("http://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
+            Uri featureServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
 
             // Initialize feature table using a url to feature server url
             ServiceFeatureTable featureTable = new ServiceFeatureTable(featureServiceUri);
@@ -80,16 +86,20 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create a button to reset the renderer
-            var resetButton = new Button(this);
-            resetButton.Text = "Reset";
+            Button resetButton = new Button(this)
+            {
+                Text = "Reset"
+            };
             resetButton.Click += OnResetButtonClicked;
 
             // Create a button to apply new renderer
-            var overrideButton = new Button(this);
-            overrideButton.Text = "Expression";
+            Button overrideButton = new Button(this)
+            {
+                Text = "Apply expression"
+            };
             overrideButton.Click += OnApplyExpressionClicked;
 
             // Add Reset Button to the layout
@@ -99,6 +109,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerDefinitionExpression
             layout.AddView(overrideButton);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

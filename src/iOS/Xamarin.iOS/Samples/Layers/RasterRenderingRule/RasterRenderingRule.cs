@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,157 +7,200 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Esri.ArcGISRuntime.ArcGISServices;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Rasters;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterRenderingRule
+namespace ArcGISRuntime.Samples.RasterRenderingRule
 {
     [Register("RasterRenderingRule")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster rendering rule",
+        category: "Layers",
+        description: "Display a raster on a map and apply different rendering rules to that raster.",
+        instructions: "Run the sample and use the drop-down menu at the top to select a rendering rule.",
+        tags: new[] { "raster", "rendering rules", "visualization" })]
     public class RasterRenderingRule : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Hold a reference to the MapView
+        // Hold references to UI controls.
         private MapView _myMapView;
+        private UILabel _selectionLabel;
+        private UIBarButtonItem _changeRuleButton;
 
-        // Hold a reference to the UIToolbar control (used to hold the UISegmentedControl)
-        private UIToolbar _myUIToolbar = new UIToolbar();
+        // Hold a reference to a read-only list for the various rendering rules of the image service raster.
+        private IReadOnlyList<RenderingRuleInfo> _renderRuleInfos;
 
-        // Hold a reference to a UISegmentedControl
-        // (used to hold buttons with the names of the rendering rules of the image service raster)
-        private UISegmentedControl _myUISegmentedControl = new UISegmentedControl();
-
-        // Hold a reference to a read-only list for the various rendering rules of the image service raster
-        private IReadOnlyList<RenderingRuleInfo> _myReadOnlyListRenderRuleInfos;
-
-        // Uri for the image server
-        private Uri _myUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/CharlotteLAS/ImageServer");
+        // URL for the image server.
+        private readonly Uri _myUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/CharlotteLAS/ImageServer");
 
         public RasterRenderingRule()
         {
             Title = "Raster rendering rule";
         }
 
-        public async override void ViewDidLoad()
+        private async void Initialize()
+        {
+            // Set up the map with basemap.
+            _myMapView.Map = new Map(Basemap.CreateTopographic());
+
+            // Load the rendering rules for the raster.
+            await LoadRenderingRules();
+
+            // Apply the first rendering rule
+            SelectRenderingRule(_renderRuleInfos[0]);
+        }
+
+        private async Task LoadRenderingRules()
+        {
+            // Create a new image service raster from the Uri.
+            ImageServiceRaster imageServiceRaster = new ImageServiceRaster(_myUri);
+
+            try
+            {
+                // Load the image service raster.
+                await imageServiceRaster.LoadAsync();
+
+                // Get the ArcGIS image service info (metadata) from the image service raster.
+                ArcGISImageServiceInfo arcGISImageServiceInfo = imageServiceRaster.ServiceInfo;
+
+                // Get the full extent envelope of the image service raster (the Charlotte, NC area).
+                Envelope myEnvelope = arcGISImageServiceInfo.FullExtent;
+
+                // Define a new view point from the full extent envelope.
+                Viewpoint viewPoint = new Viewpoint(myEnvelope);
+
+                // Zoom to the area of the full extent envelope of the image service raster.
+                await _myMapView.SetViewpointAsync(viewPoint);
+
+                // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster.
+                _renderRuleInfos = arcGISImageServiceInfo.RenderingRuleInfos;
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
+        }
+
+        private void SelectRenderingRule(RenderingRuleInfo renderingRuleInfo)
+        {
+            // Create a new rendering rule from the rendering rule info.
+            RenderingRule renderingRule = new RenderingRule(renderingRuleInfo);
+
+            // Create a new image service raster.
+            ImageServiceRaster imageServiceRaster = new ImageServiceRaster(_myUri)
+            {
+                // Set the image service raster's rendering rule to the rendering rule created earlier.
+                RenderingRule = renderingRule
+            };
+
+            // Create a new raster layer from the image service raster.
+            RasterLayer rasterLayer = new RasterLayer(imageServiceRaster);
+
+            // Clear the existing layer from the map.
+            _myMapView.Map.OperationalLayers.Clear();
+
+            // Add the raster layer to the operational layers of the  map view.
+            _myMapView.Map.OperationalLayers.Add(rasterLayer);
+
+            // Update the label.
+            _selectionLabel.Text = $"Rule \"{renderingRuleInfo.Name}\" selected.";
+        }
+
+        private void ChangeRenderingRule_Clicked(object sender, EventArgs e)
+        {
+            // Create the alert controller with a title.
+            UIAlertController alertController = UIAlertController.Create("Choose a rendering rule", "", UIAlertControllerStyle.Alert);
+
+            // Add actions for each rendering rule.
+            foreach (RenderingRuleInfo ruleInfo in _renderRuleInfos)
+            {
+                alertController.AddAction(UIAlertAction.Create(ruleInfo.Name, UIAlertActionStyle.Default, action => SelectRenderingRule(ruleInfo)));
+            }
+
+            // Show the alert.
+            PresentViewController(alertController, true, null);
+        }
+
+        public override void ViewDidLoad()
         {
             base.ViewDidLoad();
+            Initialize();
+        }
 
-            // Create a new MapView control and provide its location coordinates on the frame
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
             _myMapView = new MapView();
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Create a new Map instance with the basemap
-            Map myMap = new Map(SpatialReferences.WebMercator);
-            myMap.Basemap = Basemap.CreateTopographic();
+            _changeRuleButton = new UIBarButtonItem();
+            _changeRuleButton.Title = "Change rendering rule";
 
-            // Assign the Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Make the text for the buttons in the UISegmentedControl small to display the names of the rendering rules
-            UIFont myUIFont = UIFont.FromName("Helvetica-Bold", 8f);
-            _myUISegmentedControl.SetTitleTextAttributes(new UITextAttributes() { Font = myUIFont }, UIControlState.Normal);
-
-            // Wire-up the UISegmentedControl's value change event handler
-            _myUISegmentedControl.ValueChanged += _segmentControl_ValueChanged;
-
-            // Add the map view and toolbar to the view
-            View.AddSubviews(_myMapView, _myUIToolbar, _myUISegmentedControl);
-
-            // Load of the rendering rules of the image service raster and display their names on the buttons in the toolbar
-            await LoadRenderingRules();
-        }
-
-        public async Task LoadRenderingRules()
-        {
-            // Create a new image service raster from the Uri
-            ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(_myUri);
-
-            // Load the image service raster
-            await myImageServiceRaster.LoadAsync();
-
-            // Get the ArcGIS image service info (metadata) from the image service raster
-            ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
-
-            // Get the full extent envelope of the image service raster (the Charlotte, NC area)
-            Envelope myEnvelope = myArcGISImageServiceInfo.FullExtent;
-
-            // Define a new view point from the full extent envelope
-            Viewpoint myViewPoint = new Viewpoint(myEnvelope);
-
-            // Zoom to the area of the full extent envelope of the image service raster
-            await _myMapView.SetViewpointAsync(myViewPoint);
-
-            // Get the rendering rule info (i.e. definitions of how the image should be drawn) info from the image service raster
-            _myReadOnlyListRenderRuleInfos = myArcGISImageServiceInfo.RenderingRuleInfos;
-
-            // Define an index counter to be used by the UISegmentedControl
-            int myCounter = 0;
-
-            // Loop through each rendering rule info
-            foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
             {
-                // Get the name of the rendering rule info
-                string myRenderingRuleName = myRenderingRuleInfo.Name;
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _changeRuleButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace)
+            };
 
-                // Add the rendering rule info name to the UISegmentedControl
-                _myUISegmentedControl.InsertSegment(myRenderingRuleName, myCounter, false);
-
-                // Increment the counter for adding segments into the UISegmentedControl
-                myCounter = myCounter + 1;
-            }
-        }
-
-        private void _segmentControl_ValueChanged(object sender, EventArgs e)
-        {
-            // Get the index number of the user choice of render rule names
-            nint selectedSegmentId = (sender as UISegmentedControl).SelectedSegment;
-
-            // Get the rendering rule info name from the UISegmentedControl that was chosen by the user
-            string myRenderingRuleInfoName = (sender as UISegmentedControl).TitleAt(selectedSegmentId);
-
-            // Loop through each rendering rule info in the image service raster
-            foreach (RenderingRuleInfo myRenderingRuleInfo in _myReadOnlyListRenderRuleInfos)
+            _selectionLabel = new UILabel
             {
-                // Get the name of the rendering rule info
-                string myRenderingRuleName = myRenderingRuleInfo.Name;
+                Text = "No rendering rule selected.",
+                AdjustsFontSizeToFitWidth = true,
+                TextAlignment = UITextAlignment.Center,
+                BackgroundColor = UIColor.FromWhiteAlpha(0, .6f),
+                TextColor = UIColor.White,
+                Lines = 1,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
 
-                // If the name of the rendering rule info matches what was chosen by the user, proceed
-                if (myRenderingRuleName == myRenderingRuleInfoName)
-                {
-                    // Create a new rendering rule from the rendering rule info
-                    RenderingRule myRenderingRule = new RenderingRule(myRenderingRuleInfo);
+            // Add the views.
+            View.AddSubviews(_myMapView, _selectionLabel, toolbar);
 
-                    // Create a new image service raster
-                    ImageServiceRaster myImageServiceRaster2 = new ImageServiceRaster(_myUri);
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
 
-                    // Set the image service raster's rendering rule to the rendering rule created earlier
-                    myImageServiceRaster2.RenderingRule = myRenderingRule;
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
 
-                    // Create a new raster layer from the image service raster
-                    RasterLayer myRasterLayer = new RasterLayer(myImageServiceRaster2);
-
-                    // Add the raster layer to the operational layers of the  map view
-                    _myMapView.Map.OperationalLayers.Add(myRasterLayer);
-                }
-            }
+                _selectionLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _selectionLabel.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _selectionLabel.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _selectionLabel.HeightAnchor.ConstraintEqualTo(40)
+            });
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void ViewWillAppear(bool animated)
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-            _myUIToolbar.Frame = new CoreGraphics.CGRect(0, View.Bounds.Height - 50, View.Bounds.Width, 50);
-            _myUISegmentedControl.Frame = new CoreGraphics.CGRect(10, _myUIToolbar.Frame.Top + 10, View.Bounds.Width - 20, 30);
-            base.ViewDidLayoutSubviews();
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _changeRuleButton.Clicked += ChangeRenderingRule_Clicked;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _changeRuleButton.Clicked -= ChangeRenderingRule_Clicked;
         }
     }
 }

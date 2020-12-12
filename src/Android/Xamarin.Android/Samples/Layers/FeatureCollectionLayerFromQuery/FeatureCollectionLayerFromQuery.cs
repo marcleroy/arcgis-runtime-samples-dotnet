@@ -15,16 +15,22 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureCollectionLayerFromQuery
+namespace ArcGISRuntime.Samples.FeatureCollectionLayerFromQuery
 {
-    [Activity(Label = "FeatureCollectionLayerFromQuery")]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature collection layer (query)",
+        category: "Layers",
+        description: "Create a feature collection layer to show a query result from a service feature table.",
+        instructions: "When launched, this sample displays a map with point features as a feature collection layer. Pan and zoom to explore the map.",
+        tags: new[] { "layer", "query", "search", "table" })]
     public class FeatureCollectionLayerFromQuery : Activity
     {
-        // Store the map view displayed in the app
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view.
+        private MapView _myMapView;
 
         // Service endpoint to query for features
-        private const string FeatureLayerUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/0";
+        private const string FeatureLayerUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/0";
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -41,54 +47,54 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureCollectionLayerFromQuery
 
         private void Initialize()
         {
-            try
-            {
-                // Create a new map with the oceans basemap and add it to the map view
-                Map myMap = new Map(Basemap.CreateOceans());
-                _myMapView.Map = myMap;
+            // Create a new map with the oceans basemap and add it to the map view
+            Map myMap = new Map(Basemap.CreateOceans());
+            _myMapView.Map = myMap;
 
-                // Call a function that will create a new feature collection layer from a service query
-                GetFeaturesFromQuery();
-            }
-            catch (Exception ex)
-            {
-                var alertBuilder = new AlertDialog.Builder(this);
-                alertBuilder.SetTitle("Error");
-                alertBuilder.SetMessage("Unable to create feature collection layer: " + ex.Message);
-                alertBuilder.Show();
-            }
+            // Call a function that will create a new feature collection layer from a service query
+            GetFeaturesFromQuery();
         }
 
         private async void GetFeaturesFromQuery()
         {
-            // Create a service feature table to get features from
-            ServiceFeatureTable featTable = new ServiceFeatureTable(new Uri(FeatureLayerUrl));
+            try
+            {
+                // Create a service feature table to get features from
+                ServiceFeatureTable featTable = new ServiceFeatureTable(new Uri(FeatureLayerUrl));
 
-            // Create a query to get all features in the table
-            QueryParameters queryParams = new QueryParameters();
-            queryParams.WhereClause = "1=1";
+                // Create a query to get all features in the table
+                QueryParameters queryParams = new QueryParameters
+                {
+                    WhereClause = "1=1"
+                };
 
-            // Query the table to get all features
-            FeatureQueryResult featureResult = await featTable.QueryFeaturesAsync(queryParams);
+                // Query the table to get all features
+                FeatureQueryResult featureResult = await featTable.QueryFeaturesAsync(queryParams);
 
-            // Create a new feature collection table from the result features
-            FeatureCollectionTable collectTable = new FeatureCollectionTable(featureResult);
+                // Create a new feature collection table from the result features
+                FeatureCollectionTable collectTable = new FeatureCollectionTable(featureResult);
 
-            // Create a feature collection and add the table
-            FeatureCollection featCollection = new FeatureCollection();
-            featCollection.Tables.Add(collectTable);
+                // Create a feature collection and add the table
+                FeatureCollection featCollection = new FeatureCollection();
+                featCollection.Tables.Add(collectTable);
 
-            // Create a layer to display the feature collection, add it to the map's operational layers
-            FeatureCollectionLayer featCollectionTable = new FeatureCollectionLayer(featCollection);
-            _myMapView.Map.OperationalLayers.Add(featCollectionTable);
+                // Create a layer to display the feature collection, add it to the map's operational layers
+                FeatureCollectionLayer featCollectionTable = new FeatureCollectionLayer(featCollection);
+                _myMapView.Map.OperationalLayers.Add(featCollectionTable);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
             // Create a new layout
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

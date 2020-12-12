@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,17 +12,16 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
-
 using Colors = System.Drawing.Color;
 
-#endif
-
-namespace ArcGISRuntimeXamarin.Samples.AddGraphicsWithSymbols
+namespace ArcGISRuntime.Samples.AddGraphicsWithSymbols
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Add graphics with symbols",
+        category: "GraphicsOverlay",
+        description: "Use a symbol style to display a graphic on a graphics overlay.",
+        instructions: "Observe the graphics on the map.",
+        tags: new[] { "SimpleFillSymbol", "SimpleLineSymbol", "SimpleMarkerSymbol" })]
     public partial class AddGraphicsWithSymbols : ContentPage
     {
         // Create the graphics overlay
@@ -31,8 +30,6 @@ namespace ArcGISRuntimeXamarin.Samples.AddGraphicsWithSymbols
         public AddGraphicsWithSymbols()
         {
             InitializeComponent();
-
-            Title = "Add graphics with symbols";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();

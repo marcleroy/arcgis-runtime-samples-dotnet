@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayScene
+namespace ArcGISRuntime.Samples.DisplayScene
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display a scene",
+        category: "Layers",
+        description: "Display a scene with a terrain surface and some imagery.",
+        instructions: "When loaded, the sample will display a scene. Pan and zoom to explore the scene.",
+        tags: new[] { "3D", "basemap", "elevation", "scene", "surface" })]
     public class DisplayScene : Activity
     {
-        // Create a new SceneView control
-        private SceneView _mySceneView = new SceneView();
+        // Hold a reference to the scene view.
+        private SceneView _mySceneView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -51,16 +57,18 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayScene
             Surface mySurface = new Surface();
 
             // Define the string that points to the elevation image service
-            string myElevationImageService = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+            string myElevationImageService = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
             // Create a Uri from the elevation image service string
             Uri myUri = new Uri(myElevationImageService);
 
             // Create an ArcGIS tiled elevation 
-            ArcGISTiledElevationSource myArcGISTiledElevationSource = new ArcGISTiledElevationSource();
+            ArcGISTiledElevationSource myArcGISTiledElevationSource = new ArcGISTiledElevationSource
+            {
 
-            // Set the ArcGIS tiled elevation sources property to the Uri of the elevation image service
-            myArcGISTiledElevationSource.Source = myUri;
+                // Set the ArcGIS tiled elevation sources property to the Uri of the elevation image service
+                Source = myUri
+            };
 
             // Add the ArcGIS tiled elevation source to the surface's elevated sources collection
             mySurface.ElevationSources.Add(myArcGISTiledElevationSource);
@@ -78,9 +86,10 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayScene
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the scene view to the layout
+            _mySceneView = new SceneView(this);
             layout.AddView(_mySceneView);
 
             // Show the layout in the app

@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,15 +13,20 @@ using Esri.ArcGISRuntime.UI;
 using Xamarin.Forms;
 using Esri.ArcGISRuntime.Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ShowCallout
+namespace ArcGISRuntime.Samples.ShowCallout
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Show callout",
+        category: "MapView",
+        description: "Show a callout with the latitude and longitude of user-tapped points.",
+        instructions: "Tap anywhere on the map. A callout showing the WGS84 coordinates for the tapped point will appear.",
+        tags: new[] { "balloon", "bubble", "callout", "flyout", "flyover", "info window", "popup", "tap" })]
     public partial class ShowCallout : ContentPage
     {
         public ShowCallout()
         {
             InitializeComponent();
 
-            Title = "Show callout";
             Initialize();
         }
 
@@ -52,7 +57,7 @@ namespace ArcGISRuntimeXamarin.Samples.ShowCallout
             MapPoint projectedLocation = (MapPoint)myGeometry;
 
             // Format the display callout string based upon the projected map point (example: "Lat: 100.123, Long: 100.234")
-            string mapLocationDescription = string.Format("Lat: {0:F3} Long:{1:F3}", projectedLocation.Y, projectedLocation.X);
+            string mapLocationDescription = $"Lat: {projectedLocation.Y:F3} Long:{projectedLocation.X:F3}";
 
             // Create a new callout definition using the formatted string
             CalloutDefinition myCalloutDefinition = new CalloutDefinition("Location:", mapLocationDescription);

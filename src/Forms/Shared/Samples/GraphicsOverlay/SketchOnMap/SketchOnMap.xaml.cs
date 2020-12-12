@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,22 +11,22 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.UI;
-using Esri.ArcGISRuntime.Xamarin.Forms;
 using Xamarin.Forms;
-using System.Collections.Generic;
 using Esri.ArcGISRuntime.Data;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
+using System.Collections.Generic;
 
-namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
+namespace ArcGISRuntime.Samples.SketchOnMap
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Sketch on map",
+        category: "GraphicsOverlay",
+        description: "Use the Sketch Editor to edit or sketch a new point, line, or polygon geometry on to a map.",
+        instructions: "Choose which geometry type to sketch from one of the available buttons. Choose from points, multipoints, polylines, polygons, freehand polylines, and freehand polygons.",
+        tags: new[] { "draw", "edit" })]
     public partial class SketchOnMap : ContentPage
     {
         // Graphics overlay to host sketch graphics
@@ -35,8 +35,6 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         public SketchOnMap()
         {
             InitializeComponent();
-
-            Title = "Sketch on map";
 
             // Call a function to set up the map and sketch editor 
             Initialize();
@@ -55,28 +53,24 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             MyMapView.Map = myMap;
 
             // Fill the combo box with choices for the sketch modes (shapes)
-            var sketchModes = System.Enum.GetValues(typeof(SketchCreationMode));
-            foreach(var mode in sketchModes)
+            Array sketchModes = System.Enum.GetValues(typeof(SketchCreationMode));
+            foreach(object mode in sketchModes)
             {
                 SketchModePicker.Items.Add(mode.ToString());
             }
 
             SketchModePicker.SelectedIndex = 0;
 
-            // Set the sketch editor configuration to allow vertex editing, resizing, and moving
-            var config = MyMapView.SketchEditor.EditConfiguration;
-            config.AllowVertexEditing = true;
-            config.ResizeMode = SketchResizeMode.Uniform;
-            config.AllowMove = true;
-
             // Set a gray background color for Android
-            Device.OnPlatform(Android: () => 
+            if (Device.RuntimePlatform == Device.Android)
             {
                 DrawToolsGrid.BackgroundColor = Color.Gray;
-            });
+            }
 
-            // Set the sketch editor as the page's data context
-            this.BindingContext = MyMapView.SketchEditor;
+            // Hack to get around linker being too aggressive - this should be done with binding.
+            UndoButton.Command = MyMapView.SketchEditor.UndoCommand;
+            RedoButton.Command = MyMapView.SketchEditor.RedoCommand;
+            CompleteButton.Command = MyMapView.SketchEditor.CompleteCommand;
         }
 
         #region Graphic and symbol helpers
@@ -93,7 +87,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
                         symbol = new SimpleFillSymbol()
                         {
                             Color = Colors.Red,
-                            Style = SimpleFillSymbolStyle.Solid,
+                            Style = SimpleFillSymbolStyle.Solid
                         };
                         break;
                     }
@@ -130,13 +124,13 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         private async Task<Graphic> GetGraphicAsync()
         {
             // Wait for the user to click a location on the map
-            var mapPoint = (MapPoint)await MyMapView.SketchEditor.StartAsync(SketchCreationMode.Point, false);
+            MapPoint mapPoint = (MapPoint)await MyMapView.SketchEditor.StartAsync(SketchCreationMode.Point, false);
 
             // Convert the map point to a screen point
             var screenCoordinate = MyMapView.LocationToScreen(mapPoint);
 
             // Identify graphics in the graphics overlay using the point
-            var results = await MyMapView.IdentifyGraphicsOverlaysAsync(screenCoordinate, 2, false);
+            IReadOnlyList<IdentifyGraphicsOverlayResult> results = await MyMapView.IdentifyGraphicsOverlaysAsync(screenCoordinate, 2, false);
 
             // If results were found, get the first graphic
             Graphic graphic = null;
@@ -177,7 +171,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                await DisplayAlert("Error", "Error drawing graphic shape: " + ex.Message, "OK");
+                await Application.Current.MainPage.DisplayAlert("Error", "Error drawing graphic shape: " + ex.Message, "OK");
             }
         }
 
@@ -221,7 +215,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                await DisplayAlert("Error", "Error editing shape: " + ex.Message,"OK");
+                await Application.Current.MainPage.DisplayAlert("Error", "Error editing shape: " + ex.Message,"OK");
             }
         }
 

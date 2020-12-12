@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -10,15 +10,19 @@
 using Esri.ArcGISRuntime.Mapping;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.SetInitialMapLocation
+namespace ArcGISRuntime.Samples.SetInitialMapLocation
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Set initial map location",
+        category: "Map",
+        description: "Display a basemap centered at an initial location and scale.",
+        instructions: "When the map loads, note the specific location and scale of the initial map view.",
+        tags: new[] { "LOD", "basemap", "center", "envelope", "extent", "initial", "lat", "latitude", "level of detail", "location", "long", "longitude", "scale", "zoom level" })]
     public partial class SetInitialMapLocation : ContentPage
     {
         public SetInitialMapLocation()
         {
             InitializeComponent ();
-
-            Title = "Set initial map location";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();

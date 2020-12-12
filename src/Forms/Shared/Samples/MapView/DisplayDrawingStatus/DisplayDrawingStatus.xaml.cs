@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,15 +13,19 @@ using Esri.ArcGISRuntime.UI;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
+namespace ArcGISRuntime.Samples.DisplayDrawingStatus
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display draw status",
+        category: "MapView",
+        description: "Get the draw status of your map view or scene view to know when all layers in the map or scene have finished drawing.",
+        instructions: "Pan and zoom around the map. Observe how the status changes from a loading animation to solid, indicating that drawing has completed.",
+        tags: new[] { "draw", "loading", "map", "render" })]
     public partial class DisplayDrawingStatus : ContentPage
     {
         public DisplayDrawingStatus()
         {
             InitializeComponent();
-
-            Title = "Display drawing status";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -36,7 +40,7 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayDrawingStatus
             Map myMap = new Map(BasemapType.Topographic, 34.056, -117.196, 4);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0");
 
             // Initialize a new feature layer

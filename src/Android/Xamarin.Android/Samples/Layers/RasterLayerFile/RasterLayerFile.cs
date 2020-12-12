@@ -7,20 +7,25 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
 using Android.App;
 using Android.OS;
 using Android.Widget;
-using ArcGISRuntimeXamarin.Managers;
-using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Rasters;
 using Esri.ArcGISRuntime.UI.Controls;
-using System;
-using System.IO;
+using ArcGISRuntime.Samples.Managers;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterLayerFile
+namespace ArcGISRuntime.Samples.RasterLayerFile
 {
-    [Activity(Label = "RasterLayerFile")]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("7c4c679ab06a4df19dc497f577f111bd")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster layer (file)",
+        category: "Layers",
+        description: "Create and use a raster layer made from a local raster file.",
+        instructions: "When the sample starts, a raster will be loaded from a file and displayed in the map view.",
+        tags: new[] { "data", "image", "import", "layer", "raster", "visualization" })]
     public class RasterLayerFile : Activity
     {
         // Reference to the MapView used in the sample
@@ -44,13 +49,8 @@ namespace ArcGISRuntimeXamarin.Samples.RasterLayerFile
             // Create a stack layout
             LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Create the mapview
-            _myMapView = new MapView(this);
-
-            // Add an imagery basemap
-            _myMapView.Map = new Map(Basemap.CreateImagery());
-
             // Add the mapview to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Set the layout as the sample view
@@ -62,11 +62,8 @@ namespace ArcGISRuntimeXamarin.Samples.RasterLayerFile
             // Add an imagery basemap
             Map myMap = new Map(Basemap.CreateImagery());
 
-            // Wait for the map to load
-            await myMap.LoadAsync();
-
             // Get the file name
-            String filepath = GetRasterPath();
+            string filepath = GetRasterPath();
 
             // Load the raster file
             Raster myRasterFile = new Raster(filepath);
@@ -77,30 +74,26 @@ namespace ArcGISRuntimeXamarin.Samples.RasterLayerFile
             // Add the layer to the map
             myMap.OperationalLayers.Add(myRasterLayer);
 
-            // Wait for the layer to load
-            await myRasterLayer.LoadAsync();
-
-            // Set the viewpoint
-            myMap.InitialViewpoint = new Viewpoint(myRasterLayer.FullExtent);
-
             // Add map to the mapview
             _myMapView.Map = myMap;
+
+            try
+            {
+                // Wait for the layer to load
+                await myRasterLayer.LoadAsync();
+
+                // Set the viewpoint
+                await _myMapView.SetViewpointGeometryAsync(myRasterLayer.FullExtent);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private string GetRasterPath()
         {
-            #region offlinedata
-
-            // The desired raster is expected to be called Shasta.tif
-            string filename = "Shasta.tif";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path; Item ID is 7c4c679ab06a4df19dc497f577f111bd
-            return Path.Combine(folder, "SampleData", "RasterLayerFile", "raster-file", filename);
-
-            #endregion offlinedata
+            return DataManager.GetDataFolder("7c4c679ab06a4df19dc497f577f111bd", "raster-file", "Shasta.tif");
         }
     }
 }

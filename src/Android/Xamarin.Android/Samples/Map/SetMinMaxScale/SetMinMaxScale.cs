@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 
-namespace ArcGISRuntimeXamarin.Samples.SetMinMaxScale
+namespace ArcGISRuntime.Samples.SetMinMaxScale
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Set min & max scale",
+        category: "Map",
+        description: "Restrict zooming between specific scale ranges.",
+        instructions: "Zoom in and out of the map. The zoom extents of the map are limited between the given minimum and maximum scales.",
+        tags: new[] { "area of interest", "level of detail", "maximum", "minimum", "scale", "viewpoint" })]
     public class SetMinMaxScale : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -36,13 +42,15 @@ namespace ArcGISRuntimeXamarin.Samples.SetMinMaxScale
         private void Initialize()
         {
             // Create new Map with Streets basemap 
-            Map myMap = new Map(Basemap.CreateStreets());
+            Map myMap = new Map(Basemap.CreateStreets())
+            {
 
-            // Set the scale at which this layer can be viewed
-            // MinScale defines how far 'out' you can zoom where
-            // MaxScale defines how far 'in' you can zoom.
-            myMap.MinScale = 8000;
-            myMap.MaxScale = 2000;
+                // Set the scale at which this layer can be viewed
+                // MinScale defines how far 'out' you can zoom where
+                // MaxScale defines how far 'in' you can zoom.
+                MinScale = 8000,
+                MaxScale = 2000
+            };
 
             // Create central point where map is centered
             MapPoint centralPoint = new MapPoint(-355453, 7548720, SpatialReferences.WebMercator);
@@ -61,9 +69,10 @@ namespace ArcGISRuntimeXamarin.Samples.SetMinMaxScale
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

@@ -1,0 +1,33 @@
+{
+    "category": "MapView",
+    "description": "Filter data in layers by applying a time extent to a MapView.",
+    "formal_name": "ChangeTimeExtent",
+    "ignore": false,
+    "images": [
+        "ChangeTimeExtent.jpg"
+    ],
+    "keywords": [
+        "data",
+        "filter",
+        "time",
+        "time frame",
+        "time span"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Android": "100.9.0"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/android/sample-code/changetimeextent.htm"
+    ],
+    "relevant_apis": [
+        "Map",
+        "MapView",
+        "TimeExtent"
+    ],
+    "snippets": [
+        "ChangeTimeExtent.cs"
+    ],
+    "title": "Change time extent"
+}

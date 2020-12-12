@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,22 +12,26 @@ using System;
 using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
+namespace ArcGISRuntime.Samples.OpenMapURL
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Open map URL",
+        category: "Map",
+        description: "Display a web map.",
+        instructions: "A web map can be selected from the drop-down list. On selection the web map displays in the map view.",
+        tags: new[] { "portal item", "web map" })]
     public partial class OpenMapURL : ContentPage
     {
         // String array to hold urls to publicly available web maps
-        private string[] itemURLs = new string[]
-        {
-            "https://www.arcgis.com/home/item.html?id=2d6fa24b357d427f9c737774e7b0f977",
+        private string[] itemURLs = {
+            "https://www.arcgis.com/home/item.html?id=6c55717376ff4faaa18ea75e0388e4b2",
             "https://www.arcgis.com/home/item.html?id=01f052c8995e4b9e889d73c3e210ebe3",
             "https://www.arcgis.com/home/item.html?id=92ad152b9da94dee89b9e387dfe21acd"
         };
 
         // String array to store titles for the webmaps specified above. These titles are in the same order as the urls above
-        private string[] titles = new string[]
-        {
-            "Housing with Mortgages",
+        private string[] titles = {
+            "Kilauea volcanic eruption",
             "USA Tapestry Segmentation",
             "Geology of United States"
         };
@@ -35,8 +39,6 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
         public OpenMapURL()
         {
             InitializeComponent ();
-
-            Title = "Open map (URL)";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -54,14 +56,14 @@ namespace ArcGISRuntimeXamarin.Samples.OpenMapURL
         private async void OnMapsClicked(object sender, EventArgs e)
         {
             // Show sheet and get title from the selection
-            var selectedMapTitle = 
-                await DisplayActionSheet("Select map", "Cancel",null, titles);
+            string selectedMapTitle = 
+                await ((Page)Parent).DisplayActionSheet("Select map", "Cancel",null, titles);
 
             // If selected cancel do nothing
-            if (selectedMapTitle == "Cancel") return;
+            if (selectedMapTitle == null || selectedMapTitle == "Cancel") return;
 
             // Get index that is used to get the selected url
-            var selectedIndex = titles.ToList().IndexOf(selectedMapTitle);
+            int selectedIndex = titles.ToList().IndexOf(selectedMapTitle);
 
             // Create a new Map instance with url of the webmap that selected
             MyMapView.Map = new Map(new Uri(itemURLs[selectedIndex]));

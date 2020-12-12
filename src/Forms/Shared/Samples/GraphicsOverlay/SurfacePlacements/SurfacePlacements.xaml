@@ -1,10 +1,43 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"             
-             xmlns:esriUI="clr-namespace:Esri.ArcGISRuntime.Xamarin.Forms;assembly=Esri.ArcGISRuntime.Xamarin.Forms"
-             xmlns:mapping="clr-namespace:Esri.ArcGISRuntime.Mapping;assembly=Esri.ArcGISRuntime" 
-             x:Class="ArcGISRuntimeXamarin.Samples.SurfacePlacements.SurfacePlacements">
-  <Grid>
-    <esriUI:SceneView x:Name="MySceneView"/>
-  </Grid>
+<ContentPage
+    x:Class="ArcGISRuntime.Samples.SurfacePlacements.SurfacePlacements"
+    xmlns="http://xamarin.com/schemas/2014/forms"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:esriUI="clr-namespace:Esri.ArcGISRuntime.Xamarin.Forms;assembly=Esri.ArcGISRuntime.Xamarin.Forms">
+    <Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
+            <esriUI:SceneView x:Name="MySceneView" Grid.Row="0" />
+            <Button
+                x:Name="BillboardedButton"
+                Grid.Row="1"
+                Clicked="BillboardedClicked"
+                IsEnabled="False"
+                Text="Draped Billboarded" />
+            <Button
+                x:Name="FlatButton"
+                Grid.Row="2"
+                Clicked="FlatClicked"
+                Text="Draped Flat" />
+            <Slider
+                x:Name="ZSlider"
+                Grid.Row="3"
+                Margin="5,0,5,0"
+                Maximum="140"
+                Minimum="0"
+                ValueChanged="ZSlider_ValueChanged"
+                Value="70" />
+            <Label
+                x:Name="ValueLabel"
+                Grid.Row="4"
+                Margin="5,0,5,0"
+                Text="Z Value: 70 meters" />
+        </Grid>
+    </Grid>
 </ContentPage>

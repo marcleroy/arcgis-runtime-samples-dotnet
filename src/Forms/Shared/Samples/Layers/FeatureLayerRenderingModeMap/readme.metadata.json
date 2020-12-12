@@ -1,0 +1,38 @@
+{
+    "category": "Layers",
+    "description": "Render features statically or dynamically by setting the feature layer rendering mode.",
+    "formal_name": "FeatureLayerRenderingModeMap",
+    "ignore": false,
+    "images": [
+        "FeatureLayerRenderingModeMap.jpg"
+    ],
+    "keywords": [
+        "dynamic",
+        "feature layer",
+        "features",
+        "rendering",
+        "static"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.UWP": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Android": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Forms": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.iOS": "100.9.0"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/forms/sample-code/featurelayerrenderingmodemap.htm"
+    ],
+    "relevant_apis": [
+        "FeatureLayer",
+        "FeatureLayer.RenderingMode",
+        "Map",
+        "MapView"
+    ],
+    "snippets": [
+        "FeatureLayerRenderingModeMap.xaml",
+        "FeatureLayerRenderingModeMap.xaml.cs"
+    ],
+    "title": "Feature layer rendering mode (map)"
+}

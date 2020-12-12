@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,99 +7,136 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using Esri.ArcGISRuntime.Geometry;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ChangeBasemap
+namespace ArcGISRuntime.Samples.ChangeBasemap
 {
     [Register("ChangeBasemap")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Change basemap",
+        category: "Map",
+        description: "Change a map's basemap. A basemap is beneath all layers on a `Map` and is used to provide visual reference for the operational layers.",
+        instructions: "Use the drop down menu to select the active basemap from the list of available basemaps.",
+        tags: new[] { "basemap", "map" })]
     public class ChangeBasemap : UIViewController
     {
+        // Hold references to UI controls.
         private MapView _myMapView;
-        private UIToolbar _toolbar = new UIToolbar();
-        private UISegmentedControl _segmentControl = new UISegmentedControl();
+        private UIBarButtonItem _changeBasemapButton;
+
+        // Dictionary that associates names with basemaps.
+        private readonly Dictionary<string, Basemap> _basemapOptions = new Dictionary<string, Basemap>
+        {
+            {"Streets (Raster)", Basemap.CreateStreets()},
+            {"Streets (Vector)", Basemap.CreateStreetsVector()},
+            {"Streets - Night (Vector)", Basemap.CreateStreetsNightVector()},
+            {"Imagery (Raster)", Basemap.CreateImagery()},
+            {"Imagery with Labels (Raster)", Basemap.CreateImageryWithLabels()},
+            {"Imagery with Labels (Vector)", Basemap.CreateImageryWithLabelsVector()},
+            {"Dark Gray Canvas (Vector)", Basemap.CreateDarkGrayCanvasVector()},
+            {"Light Gray Canvas (Raster)", Basemap.CreateLightGrayCanvas()},
+            {"Light Gray Canvas (Vector)", Basemap.CreateLightGrayCanvasVector()},
+            {"Navigation (Vector)", Basemap.CreateNavigationVector()},
+            {"OpenStreetMap (Raster)", Basemap.CreateOpenStreetMap()}
+        };
 
         public ChangeBasemap()
         {
             Title = "Change basemap";
         }
 
-        public override void DidReceiveMemoryWarning()
+        private void BasemapSelectionButtonClick(object sender, EventArgs e)
         {
-            // Releases the view if it doesn't have a superview
-            base.DidReceiveMemoryWarning();
+            // Create the view controller that will present the list of basemaps.
+            UIAlertController basemapSelectionAlert = UIAlertController.Create("Select a basemap", "", UIAlertControllerStyle.ActionSheet);
+
+            // Add an option for each basemap.
+            foreach (string item in _basemapOptions.Keys)
+            {
+                // Selecting a basemap will call the lambda method, which will apply the chosen basemap.
+                basemapSelectionAlert.AddAction(UIAlertAction.Create(item, UIAlertActionStyle.Default, action => _myMapView.Map.Basemap = _basemapOptions[item]));
+            }
+
+            // Fix to prevent crash on iPad.
+            var popoverPresentationController = basemapSelectionAlert.PopoverPresentationController;
+            if (popoverPresentationController != null)
+            {
+                popoverPresentationController.BarButtonItem = (UIBarButtonItem) sender;
+            }
+
+            // Show the alert.
+            PresentViewController(basemapSelectionAlert, true, null);
+        }
+
+        private void Initialize()
+        {
+            // Create and use a new map.
+            _myMapView.Map = new Map(_basemapOptions.Values.First());
         }
 
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create a new MapView control and provide its location coordinates on the frame
-            _myMapView = new MapView();
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            // Create a new Map instance with the basemap
-            Map myMap = new Map(SpatialReferences.WebMercator);
-            myMap.Basemap = Basemap.CreateTopographic();
-
-            // Assign the Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Create a segmented control to display buttons
-            _segmentControl = new UISegmentedControl();
-            _segmentControl.Frame = new CoreGraphics.CGRect(8, 8, View.Bounds.Width - 16, 24);
-            _segmentControl.InsertSegment("Topo", 0, false);
-            _segmentControl.InsertSegment("Streets", 1, false);
-            _segmentControl.InsertSegment("Imagery", 2, false);
-            _segmentControl.InsertSegment("Ocean", 3, false);
-
-            _segmentControl.SelectedSegment = 0;
-
-            _segmentControl.ValueChanged += (sender, e) =>
-            {
-                var selectedSegmentId = (sender as UISegmentedControl).SelectedSegment;
-
-                switch (selectedSegmentId)
-                {
-                    case 0:
-
-                        // Set the basemap to Topographic
-                        _myMapView.Map.Basemap = Basemap.CreateTopographic();
-                        break;
-
-                    case 1:
-
-                        // Set the basemap to Streets
-                        _myMapView.Map.Basemap = Basemap.CreateStreets();
-                        break;
-
-                    case 2:
-
-                        // Set the basemap to Imagery
-                        _myMapView.Map.Basemap = Basemap.CreateImagery();
-                        break;
-
-                    case 3:
-
-                        // Set the basemap to Oceans
-                        _myMapView.Map.Basemap = Basemap.CreateOceans();
-                        break;
-                }
-            };
-
-            View.AddSubviews(_myMapView, _toolbar, _segmentControl);
+            Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-            _toolbar.Frame = new CoreGraphics.CGRect(0, View.Bounds.Height - 50, View.Bounds.Width, 50);
-            _segmentControl.Frame = new CoreGraphics.CGRect(10, _toolbar.Frame.Top + 10, View.Bounds.Width - 20, _toolbar.Frame.Height - 20);
-            base.ViewDidLayoutSubviews();
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            _changeBasemapButton = new UIBarButtonItem();
+            _changeBasemapButton.Title = "Change basemap";
+
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _changeBasemapButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace)
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _changeBasemapButton.Clicked += BasemapSelectionButtonClick;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _changeBasemapButton.Clicked -= BasemapSelectionButtonClick;
         }
     }
 }

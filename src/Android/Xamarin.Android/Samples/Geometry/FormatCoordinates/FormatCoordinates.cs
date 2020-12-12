@@ -18,13 +18,20 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Drawing;
 
-namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
+namespace ArcGISRuntime.Samples.FormatCoordinates
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Format coordinates",
+        category: "Geometry",
+        description: "Format coordinates in a variety of common notations.",
+        instructions: "Tap on the map to see a callout with the clicked location's coordinate formatted in 4 different ways. You can also put a coordinate string in any of these formats in the text field. Hit Enter and the coordinate string will be parsed to a map location which the callout will move to.",
+        tags: new[] { "USNG", "UTM", "convert", "coordinate", "decimal degrees", "degree minutes seconds", "format", "latitude", "longitude" })]
     public class FormatCoordinates : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
+
         private EditText _DecimalDegreesEditText;
         private EditText _DmsEditText;
         private EditText _UtmEditText;
@@ -73,6 +80,12 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             // Hold the entered point
             MapPoint enteredPoint = null;
 
+            // Set a default last edited field to prevent NullReferenceException
+            if (_lastEdited == null)
+            {
+                _lastEdited = _DecimalDegreesEditText;
+            }
+
             // Update the point based on which text sent the event
             try
             {
@@ -99,7 +112,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             {
                 // The coordinate is malformed, warn and return
                 // Display the message to the user
-                var builder = new AlertDialog.Builder(this);
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.SetMessage(ex.Message).SetTitle("Invalid Format").Show();
                 return;
             }
@@ -108,7 +121,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             UpdateUIFromMapPoint(enteredPoint);
         }
 
-        private void UpdateUIFromMapPoint(MapPoint startingPoint)
+        private void UpdateUIFromMapPoint(MapPoint selectedPoint)
         {
             // Clear event subscriptions - prevents an infinite loop
             _UtmEditText.TextChanged -= InputTextChanged;
@@ -116,19 +129,46 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             _DecimalDegreesEditText.TextChanged -= InputTextChanged;
             _UsngEditText.TextChanged -= InputTextChanged;
 
+            try
+            {
+                // Check if the selected point can be formatted into coordinates.
+                CoordinateFormatter.ToLatitudeLongitude(selectedPoint, LatitudeLongitudeFormat.DecimalDegrees, 0);
+            }
+            catch (Exception e)
+            {
+                // Check if the excpetion is because the coordinates are out of range.
+                if (e.Message == "Invalid argument: coordinates are out of range")
+                {
+                    // Set all of the text fields to contain the error message.
+                    _DecimalDegreesEditText.Text = "Coordinates are out of range";
+                    _DmsEditText.Text = "Coordinates are out of range";
+                    _UtmEditText.Text = "Coordinates are out of range";
+                    _UsngEditText.Text = "Coordinates are out of range";
+
+                    // Clear the selectionss symbol.
+                    _myMapView.GraphicsOverlays[0].Graphics.Clear();
+                }
+                // Restore event subscriptions.
+                _UtmEditText.TextChanged += InputTextChanged;
+                _DmsEditText.TextChanged += InputTextChanged;
+                _DecimalDegreesEditText.TextChanged += InputTextChanged;
+                _UsngEditText.TextChanged += InputTextChanged;
+                return;
+            }
+
             // Update the decimal degrees text
             _DecimalDegreesEditText.Text =
-                CoordinateFormatter.ToLatitudeLongitude(startingPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
+                CoordinateFormatter.ToLatitudeLongitude(selectedPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
 
             // Update the degrees, minutes, seconds text
-            _DmsEditText.Text = CoordinateFormatter.ToLatitudeLongitude(startingPoint,
+            _DmsEditText.Text = CoordinateFormatter.ToLatitudeLongitude(selectedPoint,
                 LatitudeLongitudeFormat.DegreesMinutesSeconds, 1);
 
             // Update the UTM text
-            _UtmEditText.Text = CoordinateFormatter.ToUtm(startingPoint, UtmConversionMode.NorthSouthIndicators, true);
+            _UtmEditText.Text = CoordinateFormatter.ToUtm(selectedPoint, UtmConversionMode.NorthSouthIndicators, true);
 
             // Update the USNG text
-            _UsngEditText.Text = CoordinateFormatter.ToUsng(startingPoint, 4, true);
+            _UsngEditText.Text = CoordinateFormatter.ToUsng(selectedPoint, 4, true);
 
             // Clear existing graphics overlays
             _myMapView.GraphicsOverlays[0].Graphics.Clear();
@@ -137,7 +177,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             SimpleMarkerSymbol symbol = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.X, Color.Yellow, 20);
 
             // Create the graphic
-            Graphic symbolGraphic = new Graphic(startingPoint, symbol);
+            Graphic symbolGraphic = new Graphic(selectedPoint, symbol);
 
             // Add the graphic to the graphics overlay
             _myMapView.GraphicsOverlays[0].Graphics.Add(symbolGraphic);
@@ -152,7 +192,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Help Label
             TextView helpLabel = new TextView(this) { Text = "Edit the coordinates or tap the map to see conversions.\n\n" };
@@ -188,6 +228,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             layout.AddView(recalculateButton);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

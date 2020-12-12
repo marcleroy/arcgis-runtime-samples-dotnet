@@ -16,13 +16,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
+namespace ArcGISRuntime.Samples.TimeBasedQuery
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Time-based query",
+        category: "Layers",
+        description: "Query data using a time extent. ",
+        instructions: "Run the sample, and a subset of records will be displayed on the map.",
+        tags: new[] { "query", "time", "time extent" })]
     public class TimeBasedQuery : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Hold a URI pointing to the feature service
         private Uri _serviceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Hurricanes/MapServer/0");
@@ -49,10 +55,12 @@ namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
             Map myMap = new Map(Basemap.CreateOceans());
 
             // Create feature table for the hurricane feature service
-            _myFeatureTable = new ServiceFeatureTable(_serviceUri);
+            _myFeatureTable = new ServiceFeatureTable(_serviceUri)
+            {
 
-            // Define the request mode
-            _myFeatureTable.FeatureRequestMode = FeatureRequestMode.ManualCache;
+                // Define the request mode
+                FeatureRequestMode = FeatureRequestMode.ManualCache
+            };
 
             // When feature table is loaded, populate data
             _myFeatureTable.LoadStatusChanged += OnLoadedPopulateData;
@@ -85,18 +93,26 @@ namespace ArcGISRuntimeXamarin.Samples.TimeBasedQuery
             queryParameters.TimeExtent = myExtent;
 
             // Create list of the fields that are returned from the service
-            var outputFields = new string[] { "*" };
+            string[] outputFields = { "*" };
 
-            // Populate feature table with the data based on query
-            await _myFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            try
+            {
+                // Populate feature table with the data based on query
+                await _myFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

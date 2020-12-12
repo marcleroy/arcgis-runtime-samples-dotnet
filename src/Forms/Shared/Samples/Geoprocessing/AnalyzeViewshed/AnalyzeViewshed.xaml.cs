@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -19,8 +19,14 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
+namespace ArcGISRuntime.Samples.AnalyzeViewshed
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Analyze viewshed (geoprocessing)",
+        category: "Geoprocessing",
+        description: "Calculate a viewshed using a geoprocessing service, in this case showing what parts of a landscape are visible from points on mountainous terrain.",
+        instructions: "Tap the map to see all areas visible from that point within a 15km radius. Clicking on an elevated area will highlight a larger part of the surrounding landscape. It may take a few seconds for the task to run and send back the results.",
+        tags: new[] { "geoprocessing", "heat map", "heatmap", "viewshed" })]
     public partial class AnalyzeViewshed : ContentPage
     {
 
@@ -37,8 +43,6 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
         public AnalyzeViewshed()
         {
             InitializeComponent();
-
-            Title = "Viewshed (Geoprocessing)";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -78,10 +82,17 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
             // Normalize the geometry if wrap-around is enabled
             //    This is necessary because of how wrapped-around map coordinates are handled by Runtime
             //    Without this step, the task may fail because wrapped-around coordinates are out of bounds.
-            if (MyMapView.IsWrapAroundEnabled) { geometry = GeometryEngine.NormalizeCentralMeridian(geometry) as MapPoint; }
+            if (MyMapView.IsWrapAroundEnabled) { geometry = (MapPoint)GeometryEngine.NormalizeCentralMeridian(geometry); }
 
-            // Execute the geoprocessing task using the user click location 
-            await CalculateViewshed(geometry);
+            try
+            {
+                // Execute the geoprocessing task using the user click location 
+                await CalculateViewshed(geometry);
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }
 
         private async Task CalculateViewshed(MapPoint location)
@@ -91,10 +102,10 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
             // is a problem with the execution of the geoprocessing task an error message will be displayed 
 
             // Create new geoprocessing task using the url defined in the member variables section
-            var myViewshedTask = await GeoprocessingTask.CreateAsync(new Uri(_viewshedUrl));
+            GeoprocessingTask myViewshedTask = await GeoprocessingTask.CreateAsync(new Uri(_viewshedUrl));
 
             // Create a new feature collection table based upon point geometries using the current map view spatial reference
-            var myInputFeatures = new FeatureCollectionTable(new List<Field>(), GeometryType.Point, MyMapView.SpatialReference);
+            FeatureCollectionTable myInputFeatures = new FeatureCollectionTable(new List<Field>(), GeometryType.Point, MyMapView.SpatialReference);
 
             // Create a new feature from the feature collection table. It will not have a coordinate location (x,y) yet
             Feature myInputFeature = myInputFeatures.CreateFeature();
@@ -107,16 +118,18 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
 
             // Create the parameters that are passed to the used geoprocessing task
             GeoprocessingParameters myViewshedParameters =
-                new GeoprocessingParameters(GeoprocessingExecutionType.SynchronousExecute);
+                new GeoprocessingParameters(GeoprocessingExecutionType.SynchronousExecute)
+                {
 
-            // Request the output features to use the same SpatialReference as the map view
-            myViewshedParameters.OutputSpatialReference = MyMapView.SpatialReference;
+                    // Request the output features to use the same SpatialReference as the map view
+                    OutputSpatialReference = MyMapView.SpatialReference
+                };
 
             // Add an input location to the geoprocessing parameters
             myViewshedParameters.Inputs.Add("Input_Observation_Point", new GeoprocessingFeatures(myInputFeatures));
 
             // Create the job that handles the communication between the application and the geoprocessing task
-            var myViewshedJob = myViewshedTask.CreateJob(myViewshedParameters);
+            GeoprocessingJob myViewshedJob = myViewshedTask.CreateJob(myViewshedParameters);
 
             try
             {
@@ -124,11 +137,11 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
                 GeoprocessingResult myAnalysisResult = await myViewshedJob.GetResultAsync();
 
                 // Get the results from the outputs
-                GeoprocessingFeatures myViewshedResultFeatures = myAnalysisResult.Outputs["Viewshed_Result"] as GeoprocessingFeatures;
+                GeoprocessingFeatures myViewshedResultFeatures = (GeoprocessingFeatures)myAnalysisResult.Outputs["Viewshed_Result"];
 
                 // Add all the results as a graphics to the map
                 IFeatureSet myViewshedAreas = myViewshedResultFeatures.Features;
-                foreach (var myFeature in myViewshedAreas)
+                foreach (Feature myFeature in myViewshedAreas)
                 {
                     _resultOverlay.Graphics.Add(new Graphic(myFeature.Geometry));
                 }
@@ -138,11 +151,11 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
                 // Display an error message if there is a problem
                 if (myViewshedJob.Status == JobStatus.Failed && myViewshedJob.Error != null)
                 {
-                    await DisplayAlert("Geoprocessing error", "Executing geoprocessing failed. " + myViewshedJob.Error.Message, "OK");
+                    await Application.Current.MainPage.DisplayAlert("Geoprocessing error", "Executing geoprocessing failed. " + myViewshedJob.Error.Message, "OK");
                 }
                 else
                 {
-                    await DisplayAlert("Sample error", "An error occurred. " + ex.ToString(), "OK");
+                    await Application.Current.MainPage.DisplayAlert("Sample error", "An error occurred. " + ex.ToString(), "OK");
                 }
             }
             finally
@@ -163,13 +176,7 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
                 Symbol = new SimpleMarkerSymbol()
                 {
                     Size = 15,
-
-                    // Account for the Color differences supported by the various platforms
-                    #if WINDOWS_UWP
-                        Color = Windows.UI.Colors.Red
-                    #else
-                        Color = System.Drawing.Color.Red
-                    #endif
+                    Color = System.Drawing.Color.Red
                 }
             };
 
@@ -184,13 +191,7 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
             {
                 Symbol = new SimpleFillSymbol()
                 {
-                    #if WINDOWS_UWP
-                        //using Colors = Windows.UI.Colors;
-                        Color = Windows.UI.Color.FromArgb(100, 226, 119, 40)
-                    #else
-                        // using Colors = System.Drawing.Color;
-                        Color = System.Drawing.Color.FromArgb(100, 226, 119, 40)
-                    #endif
+                    Color = System.Drawing.Color.FromArgb(100, 226, 119, 40)
                 }
             };
 

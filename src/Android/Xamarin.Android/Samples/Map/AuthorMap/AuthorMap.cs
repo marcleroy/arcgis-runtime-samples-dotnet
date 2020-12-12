@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -21,18 +21,26 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Android.Content;
 using Xamarin.Auth;
+using ContextThemeWrapper = AndroidX.AppCompat.View.ContextThemeWrapper;
 
-namespace ArcGISRuntimeXamarin.Samples.AuthorMap
+namespace ArcGISRuntime.Samples.AuthorMap
 {
-    [Activity(Label = "AuthorMap")]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Create and save map",
+        category: "Map",
+        description: "Create and save a map as an ArcGIS `PortalItem` (i.e. web map).",
+        instructions: "1. Select the basemap and layers you'd like to add to your map.",
+        tags: new[] { "ArcGIS Online", "OAuth", "portal", "publish", "share", "web map" })]
     public class AuthorMap : Activity, IOAuthAuthorizeHandler
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Progress bar to show when the app is working
-        ProgressBar _progressBar;
+        private ProgressBar _progressBar;
 
         // Use a TaskCompletionSource to track the completion of the authorization
         private TaskCompletionSource<IDictionary<string, string>> _taskCompletionSource;
@@ -43,8 +51,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private EditText _redirectUrlText;
 
         // String array to store basemap constructor types
-        private string[] _basemapTypes = new string[]
-        {
+        private string[] _basemapTypes = {
             "Topographic",
             "Streets",
             "Imagery",
@@ -54,21 +61,21 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         // Dictionary of operational layer names and URLs
         private Dictionary<string, string> _operationalLayerUrls = new Dictionary<string, string>
         {
-            {"World Elevations", "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer"},
-            {"World Cities", "http://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/" },
-            {"US Census Data", "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer"}
+            {"World Elevations", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer"},
+            {"World Cities", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/" },
+            {"US Census Data", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer"}
         };
 
         // Variables for OAuth-related values ...
         // URL of the server to authenticate with
-        private string ServerUrl = "https://www.arcgis.com/sharing/rest";
+        private string _serverUrl = "https://www.arcgis.com/sharing/rest";
 
         // TODO: Add Client ID for an app registered with the server
-        private string AppClientId = "2Gh53JRzkPtOENQq";
+        private string _appClientId = "lgAdHkYZYlwwfAhC";
 
         // TODO: Add URL for redirecting after a successful authorization
         //       Note - this must be a URL configured as a valid Redirect URI with your app
-        private string OAuthRedirectUrl = "https://developers.arcgis.com";
+        private string _oAuthRedirectUrl = "my-ags-app://auth";
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -98,31 +105,41 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private void CreateLayout()
         {
             // Create a horizontal layout for the buttons at the top
-            var buttonLayout = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+            LinearLayout buttonLayout = new LinearLayout(this) { Orientation = Orientation.Horizontal };
 
             // Create a progress bar (circle) to show when the app is working
-            _progressBar = new ProgressBar(this);
-            _progressBar.Indeterminate = true;
-            _progressBar.Visibility = ViewStates.Invisible;
+            _progressBar = new ProgressBar(this)
+            {
+                Indeterminate = true,
+                Visibility = ViewStates.Invisible
+            };
 
             // Create button to clear the map from the map view (start over)
-            var newMapButton = new Button(this);
-            newMapButton.Text = "New";
+            Button newMapButton = new Button(this)
+            {
+                Text = "New"
+            };
             newMapButton.Click += OnNewMapClicked;
 
             // Create button to show available basemap
-            var basemapButton = new Button(this);
-            basemapButton.Text = "Basemap";
+            Button basemapButton = new Button(this)
+            {
+                Text = "Basemap"
+            };
             basemapButton.Click += OnBasemapsClicked;
 
             // Create a button to show operational layers
-            var layersButton = new Button(this);
-            layersButton.Text = "Layers";
+            Button layersButton = new Button(this)
+            {
+                Text = "Layers"
+            };
             layersButton.Click += OnLayersClicked;
 
             // Create a button to save the map
-            var saveMapButton = new Button(this);
-            saveMapButton.Text = "Save ...";
+            Button saveMapButton = new Button(this)
+            {
+                Text = "Save ..."
+            };
             saveMapButton.Click += OnSaveMapClicked;
 
             // Add progress bar, new map, basemap, layers, and save buttons to the layout
@@ -133,12 +150,13 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             buttonLayout.AddView(_progressBar);
 
             // Create a new vertical layout for the app (buttons followed by map view)
-            var mainLayout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout mainLayout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the button layout
             mainLayout.AddView(buttonLayout);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             mainLayout.AddView(_myMapView);
 
             // Show the layout in the app
@@ -164,10 +182,10 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
         private async void SaveMapAsync(object sender, OnSaveMapEventArgs e)
         {
-            var alertBuilder = new AlertDialog.Builder(this);
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
 
             // Get the current map
-            var myMap = _myMapView.Map;
+            Map myMap = _myMapView.Map;
 
             try
             {
@@ -175,9 +193,9 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                 _progressBar.Visibility = ViewStates.Visible;
 
                 // Get information entered by the user for the new portal item properties
-                var title = e.MapTitle;
-                var description = e.MapDescription;
-                var tags = e.Tags;
+                string title = e.MapTitle;
+                string description = e.MapDescription;
+                string[] tags = e.Tags;
 
                 // Apply the current extent as the map's initial extent
                 myMap.InitialViewpoint = _myMapView.GetCurrentViewpoint(ViewpointType.BoundingGeometry);
@@ -192,7 +210,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     await SaveNewMapAsync(myMap, title, description, tags, thumbnailImg);
 
                     // Report a successful save
-                    alertBuilder.SetTitle("Map Saved");
+                    alertBuilder.SetTitle("Map saved");
                     alertBuilder.SetMessage("Saved '" + title + "' to ArcGIS Online!");
                     alertBuilder.Show();
                 }
@@ -205,11 +223,11 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     Stream imageStream = await thumbnailImg.GetEncodedBufferAsync();
 
                     // Update the item thumbnail
-                    (myMap.Item as PortalItem).SetThumbnailWithImage(imageStream);
+                    ((PortalItem)myMap.Item).SetThumbnail(imageStream);
                     await myMap.SaveAsync();
 
                     // Report update was successful
-                    alertBuilder.SetTitle("Updates Saved");
+                    alertBuilder.SetTitle("Updates saved");
                     alertBuilder.SetMessage("Saved changes to '" + myMap.Item.Title + "'");
                     alertBuilder.Show();
                 }
@@ -231,16 +249,18 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private async Task SaveNewMapAsync(Map myMap, string title, string description, string[] tags, RuntimeImage img)
         {
             // Challenge the user for portal credentials (OAuth credential request for arcgis.com)
-            CredentialRequestInfo loginInfo = new CredentialRequestInfo();
-
-            // Use the OAuth implicit grant flow
-            loginInfo.GenerateTokenOptions = new GenerateTokenOptions
+            CredentialRequestInfo loginInfo = new CredentialRequestInfo
             {
-                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
-            };
 
-            // Indicate the url (portal) to authenticate with (ArcGIS Online)
-            loginInfo.ServiceUri = new Uri("https://www.arcgis.com/sharing/rest");
+                // Use the OAuth implicit grant flow
+                GenerateTokenOptions = new GenerateTokenOptions
+                {
+                    TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                },
+
+                // Indicate the url (portal) to authenticate with (ArcGIS Online)
+                ServiceUri = new Uri("https://www.arcgis.com/sharing/rest")
+            };
 
             try
             {
@@ -266,14 +286,14 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         #region Basemap Button
         private void OnBasemapsClicked(object sender, EventArgs e)
         {
-            var mapsButton = sender as Button;
+            Button mapsButton = (Button)sender;
 
             // Create a menu to show basemaps
-            var mapsMenu = new PopupMenu(mapsButton.Context, mapsButton);
+            PopupMenu mapsMenu = new PopupMenu(mapsButton.Context, mapsButton);
             mapsMenu.MenuItemClick += OnBasemapsMenuItemClicked;
             
             // Create a menu option for each basemap type
-            foreach (var basemapType in _basemapTypes)
+            foreach (string basemapType in _basemapTypes)
             {
                 mapsMenu.Menu.Add(basemapType);
             }
@@ -285,7 +305,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private void OnBasemapsMenuItemClicked(object sender, PopupMenu.MenuItemClickEventArgs e)
         {
             // Get the title of the selected item
-            var selectedBasemapType = e.Item.TitleCondensedFormatted.ToString();
+            string selectedBasemapType = e.Item.TitleCondensedFormatted.ToString();
 
             // Apply the chosen basemap
             switch (selectedBasemapType)
@@ -313,16 +333,16 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         #region Layers Button
         private void OnLayersClicked(object sender, EventArgs e)
         {
-            var layerButton = sender as Button;
+            Button layerButton = (Button)sender;
 
             // Create menu to show layers
-            var layerMenu = new PopupMenu(layerButton.Context, layerButton);
+            PopupMenu layerMenu = new PopupMenu(layerButton.Context, layerButton);
             layerMenu.MenuItemClick += OnLayerMenuItemClicked;
 
             // Create menu options
-            foreach (var layerInfo in _operationalLayerUrls)
+            foreach (string layerInfo in _operationalLayerUrls.Keys)
             {
-                layerMenu.Menu.Add(layerInfo.Key);
+                layerMenu.Menu.Add(layerInfo);
             }
 
             // Show menu in the view
@@ -332,7 +352,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private void OnLayerMenuItemClicked(object sender, PopupMenu.MenuItemClickEventArgs e)
         {
             // Get the title of the selected item
-            var selectedLayerName = e.Item.TitleCondensedFormatted.ToString();
+            string selectedLayerName = e.Item.TitleCondensedFormatted.ToString();
 
             // See if the layer already exists
             ArcGISMapImageLayer layer = _myMapView.Map.OperationalLayers.FirstOrDefault(l => l.Name == selectedLayerName) as ArcGISMapImageLayer;
@@ -345,15 +365,17 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             else
             {
                 // Get the URL for this layer
-                var layerUrl = _operationalLayerUrls[selectedLayerName];
-                var layerUri = new Uri(layerUrl);
+                string layerUrl = _operationalLayerUrls[selectedLayerName];
+                Uri layerUri = new Uri(layerUrl);
 
                 // Create a new map image layer
-                layer = new ArcGISMapImageLayer(layerUri);
-                layer.Name = selectedLayerName;
+                layer = new ArcGISMapImageLayer(layerUri)
+                {
+                    Name = selectedLayerName,
 
-                // Set it 50% opaque, and add it to the map
-                layer.Opacity = 0.5;
+                    // Set it 50% opaque, and add it to the map
+                    Opacity = 0.5
+                };
                 _myMapView.Map.OperationalLayers.Add(layer);
             }
         }
@@ -368,33 +390,53 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
 
             // Create the layout
-            LinearLayout dialogLayout = new LinearLayout(this);
-            dialogLayout.Orientation = Orientation.Vertical;
+            LinearLayout dialogLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
 
             // Create a text box for entering the client id
-            LinearLayout clientIdLayout = new LinearLayout(this);
-            clientIdLayout.Orientation = Orientation.Horizontal;
-            var clientIdLabel = new TextView(this);
-            clientIdLabel.Text = "Client ID:";
+            LinearLayout clientIdLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Horizontal
+            };
+            TextView clientIdLabel = new TextView(this)
+            {
+                Text = "Client ID:"
+            };
             _clientIdText = new EditText(this);
-            if (!string.IsNullOrEmpty(AppClientId)) { _clientIdText.Text = AppClientId; }
+            if (!String.IsNullOrEmpty(_appClientId)) { _clientIdText.Text = _appClientId; }
             clientIdLayout.AddView(clientIdLabel);
             clientIdLayout.AddView(_clientIdText);
 
             // Create a text box for entering the redirect url
-            LinearLayout redirectUrlLayout = new LinearLayout(this);
-            redirectUrlLayout.Orientation = Orientation.Horizontal;
-            var redirectUrlLabel = new TextView(this);
-            redirectUrlLabel.Text = "Redirect:";
-            _redirectUrlText = new EditText(this);
-            _redirectUrlText.Hint = "https://my.redirect/url";
-            if (!string.IsNullOrEmpty(OAuthRedirectUrl)) { _redirectUrlText.Text = OAuthRedirectUrl; }
+            LinearLayout redirectUrlLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Horizontal
+            };
+            
+            TextView redirectUrlLabel = new TextView(this)
+            {
+                Text = "Redirect:"
+            };
+
+            _redirectUrlText = new EditText(this)
+            {
+                Hint = "https://my.redirect/url"
+            };
+
+            if (!String.IsNullOrEmpty(_oAuthRedirectUrl))
+            {
+                _redirectUrlText.Text = _oAuthRedirectUrl;
+            }
             redirectUrlLayout.AddView(redirectUrlLabel);
             redirectUrlLayout.AddView(_redirectUrlText);
 
             // Create a button to dismiss the dialog (and proceed with updating the values)
-            Button okButton = new Button(this);
-            okButton.Text = "Save";
+            Button okButton = new Button(this)
+            {
+                Text = "Save"
+            };
 
             // Handle the click event for the OK button
             okButton.Click += OnCloseOAuthDialog;
@@ -416,8 +458,8 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             if (_configOAuthDialog != null)
             {
                 // Get title and description text
-                AppClientId = _clientIdText.Text;
-                OAuthRedirectUrl = _redirectUrlText.Text;
+                _appClientId = _clientIdText.Text;
+                _oAuthRedirectUrl = _redirectUrlText.Text;
 
                 // Dismiss the dialog
                 _configOAuthDialog.Dismiss();
@@ -432,11 +474,11 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             // Register the server information with the AuthenticationManager
             ServerInfo portalServerInfo = new ServerInfo
             {
-                ServerUri = new Uri(ServerUrl),
+                ServerUri = new Uri(_serverUrl),
                 OAuthClientInfo = new OAuthClientInfo
                 {
-                    ClientId = AppClientId,
-                    RedirectUri = new Uri(OAuthRedirectUrl)
+                    ClientId = _appClientId,
+                    RedirectUri = new Uri(_oAuthRedirectUrl)
                 },
                 // Specify OAuthAuthorizationCode if you need a refresh token (and have specified a valid client secret)
                 // Otherwise, use OAuthImplicit
@@ -501,7 +543,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
             // Create a new Xamarin.Auth.OAuth2Authenticator using the information passed in
             Xamarin.Auth.OAuth2Authenticator authenticator = new OAuth2Authenticator(
-                clientId: AppClientId,
+                clientId: _appClientId,
                 scope: "",
                 authorizeUrl: authorizeUri,
                 redirectUrl: callbackUri)
@@ -538,7 +580,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                 finally
                 {
                     // End the OAuth login activity
-                    this.FinishActivity(99);
+                    FinishActivity(99);
                 }
             };
 
@@ -556,7 +598,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     if (_taskCompletionSource != null)
                     {
                         _taskCompletionSource.TrySetCanceled();
-                        this.FinishActivity(99);
+                        FinishActivity(99);
                     }
                 }
 
@@ -565,8 +607,8 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             };
 
             // Present the OAuth UI (Activity) so the user can enter user name and password
-            var intent = authenticator.GetUI(this);
-            this.StartActivityForResult(intent, 99);
+            Intent intent = authenticator.GetUI(this);
+            StartActivityForResult(intent, 99);
 
             // Return completion source task so the caller can await completion
             return _taskCompletionSource.Task;
@@ -575,27 +617,27 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private static IDictionary<string, string> DecodeParameters(Uri uri)
         {
             // Create a dictionary of key value pairs returned in an OAuth authorization response URI query string
-            var answer = string.Empty;
+            string answer = "";
 
             // Get the values from the URI fragment or query string
-            if (!string.IsNullOrEmpty(uri.Fragment))
+            if (!String.IsNullOrEmpty(uri.Fragment))
             {
                 answer = uri.Fragment.Substring(1);
             }
             else
             {
-                if (!string.IsNullOrEmpty(uri.Query))
+                if (!String.IsNullOrEmpty(uri.Query))
                 {
                     answer = uri.Query.Substring(1);
                 }
             }
 
             // Parse parameters into key / value pairs
-            var keyValueDictionary = new Dictionary<string, string>();
-            var keysAndValues = answer.Split(new[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var kvString in keysAndValues)
+            Dictionary<string,string> keyValueDictionary = new Dictionary<string, string>();
+            string[] keysAndValues = answer.Split(new[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string kvString in keysAndValues)
             {
-                var pair = kvString.Split('=');
+                string[] pair = kvString.Split('=');
                 string key = pair[0];
                 string value = string.Empty;
                 if (key.Length > 1)
@@ -628,7 +670,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
         public SaveDialogFragment(PortalItem mapItem)
         {
-            this._portalItem = mapItem;
+            _portalItem = mapItem;
         }
 
         public override View OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -637,61 +679,73 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             LinearLayout dialogView = null;
 
             // Get the context for creating the dialog controls
-            Android.Content.Context ctx = this.Activity.ApplicationContext;
+            Android.Content.Context ctx = Activity.ApplicationContext;
+            ContextThemeWrapper ctxWrapper = new ContextThemeWrapper(ctx, Android.Resource.Style.ThemeMaterialLight);
 
             // Set a dialog title
-            this.Dialog.SetTitle("Save Map to Portal");
+            Dialog.SetTitle("Save map to Portal");
 
             try
             {
                 base.OnCreateView(inflater, container, savedInstanceState);
 
                 // The container for the dialog is a vertical linear layout
-                dialogView = new LinearLayout(ctx);
-                dialogView.Orientation = Orientation.Vertical;
+                dialogView = new LinearLayout(ctxWrapper)
+                {
+                    Orientation = Orientation.Vertical
+                };
+                dialogView.SetPadding(10,0,10,10);
 
                 // Add a text box for entering a title for the new web map
-                _mapTitleTextbox = new EditText(ctx);
-                _mapTitleTextbox.Hint = "Title";
+                _mapTitleTextbox = new EditText(ctxWrapper)
+                {
+                    Hint = "Title"
+                };
                 dialogView.AddView(_mapTitleTextbox);
 
                 // Add a text box for entering a description
-                _mapDescriptionTextbox = new EditText(ctx);
-                _mapDescriptionTextbox.Hint = "Description";
+                _mapDescriptionTextbox = new EditText(ctxWrapper)
+                {
+                    Hint = "Description"
+                };
                 dialogView.AddView(_mapDescriptionTextbox);
 
                 // Add a text box for entering tags (populate with some values so the user doesn't have to fill this in)
-                _tagsTextbox = new EditText(ctx);
-                _tagsTextbox.Text = "ArcGIS Runtime, Web Map";
+                _tagsTextbox = new EditText(ctxWrapper)
+                {
+                    Text = "ArcGIS Runtime, Web Map"
+                };
                 dialogView.AddView(_tagsTextbox);
 
                 // Add a button to save the map
-                Button saveMapButton = new Button(ctx);
-                saveMapButton.Text = "Save";
+                Button saveMapButton = new Button(ctxWrapper)
+                {
+                    Text = "Save"
+                };
                 saveMapButton.Click += SaveMapButtonClick;
                 dialogView.AddView(saveMapButton);
 
                 // If there's an existing portal item, configure the dialog for "update" (read-only entries)
-                if (this._portalItem != null)
+                if (_portalItem != null)
                 {
-                    _mapTitleTextbox.Text = this._portalItem.Title;
+                    _mapTitleTextbox.Text = _portalItem.Title;
                     _mapTitleTextbox.Enabled = false;
 
-                    _mapDescriptionTextbox.Text = this._portalItem.Description;
+                    _mapDescriptionTextbox.Text = _portalItem.Description;
                     _mapDescriptionTextbox.Enabled = false;
 
-                    _tagsTextbox.Text = string.Join(",", this._portalItem.Tags);
+                    _tagsTextbox.Text = string.Join(",", _portalItem.Tags);
                     _tagsTextbox.Enabled = false;
 
                     // Change some of the control text
-                    this.Dialog.SetTitle("Save Changes to Map");
+                    Dialog.SetTitle("Save changes to map");
                     saveMapButton.Text = "Update";
                 }
             }
             catch (Exception ex)
             {
                 // Show the exception message 
-                var alertBuilder = new AlertDialog.Builder(this.Activity);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(Activity);
                 alertBuilder.SetTitle("Error");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();
@@ -707,29 +761,29 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             try
             {
                 // Get information for the new portal item
-                var title = _mapTitleTextbox.Text;
-                var description = _mapDescriptionTextbox.Text;
-                var tags = _tagsTextbox.Text.Split(',');
+                string title = _mapTitleTextbox.Text;
+                string description = _mapDescriptionTextbox.Text;
+                string[] tags = _tagsTextbox.Text.Split(',');
 
                 // Make sure all required info was entered
-                if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(description) || tags.Length == 0)
+                if (String.IsNullOrEmpty(title) || String.IsNullOrEmpty(description) || tags.Length == 0)
                 {
                     throw new Exception("Please enter a title, description, and some tags to describe the map.");
                 }
 
                 // Create a new OnSaveMapEventArgs object to store the information entered by the user
-                var mapSavedArgs = new OnSaveMapEventArgs(title, description, tags);
+                OnSaveMapEventArgs mapSavedArgs = new OnSaveMapEventArgs(title, description, tags);
 
                 // Raise the OnSaveClicked event so the main activity can handle the event and save the map
-                OnSaveClicked(this, mapSavedArgs);
+                OnSaveClicked?.Invoke(this, mapSavedArgs);
 
                 // Close the dialog
-                this.Dismiss();
+                Dismiss();
             }
             catch (Exception ex)
             {
                 // Show the exception message (dialog will stay open so user can try again)
-                var alertBuilder = new AlertDialog.Builder(this.Activity);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(Activity);
                 alertBuilder.SetTitle("Error");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();

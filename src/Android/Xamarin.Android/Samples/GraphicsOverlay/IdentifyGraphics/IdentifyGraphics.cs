@@ -7,6 +7,7 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
 using Android.App;
 using Android.OS;
 using Android.Widget;
@@ -16,15 +17,20 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
-using System.Collections.Generic;
 
-namespace ArcGISRuntimeXamarin.Samples.IdentifyGraphics
+namespace ArcGISRuntime.Samples.IdentifyGraphics
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Identify graphics",
+        category: "GraphicsOverlay",
+        description: "Display an alert message when a graphic is clicked.",
+        instructions: "Select a graphic to identify it. You will see an alert message displayed.",
+        tags: new[] { "graphics", "identify" })]
     public class IdentifyGraphics : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Graphics overlay to host graphics
         private GraphicsOverlay _polygonOverlay;
@@ -85,37 +91,52 @@ namespace ArcGISRuntimeXamarin.Samples.IdentifyGraphics
 
         private async void OnMapViewTapped(object sender, GeoViewInputEventArgs e)
         {
-            var tolerance = 10d; // Use larger tolerance for touch
-            var maximumResults = 1; // Only return one graphic  
-            var onlyReturnPopups = false; // Don't only return popups
+            double tolerance = 10d; // Use larger tolerance for touch
+            int maximumResults = 1; // Only return one graphic  
+            bool onlyReturnPopups = false; // Don't only return popups
 
-            // Use the following method to identify graphics in a specific graphics overlay
-            IdentifyGraphicsOverlayResult identifyResults = await _myMapView.IdentifyGraphicsOverlayAsync(
-                 _polygonOverlay,
-                 e.Position,
-                 tolerance, 
-                 onlyReturnPopups, 
-                 maximumResults);
-
-            // Check if we got results
-            if (identifyResults.Graphics.Count > 0)
+            try
             {
-                // Make sure that the UI changes are done in the UI thread
-                RunOnUiThread(() =>
+                // Use the following method to identify graphics in a specific graphics overlay
+                IdentifyGraphicsOverlayResult identifyResults = await _myMapView.IdentifyGraphicsOverlayAsync(
+                    _polygonOverlay,
+                    e.Position,
+                    tolerance, 
+                    onlyReturnPopups, 
+                    maximumResults);
+
+                // Check if we got results
+                if (identifyResults.Graphics.Count > 0)
                 {
-                    var alert = new AlertDialog.Builder(this);
-                    alert.SetMessage("Tapped on graphic");
-                    alert.Show();
-                });
+                    // Make sure that the UI changes are done in the UI thread
+                    RunOnUiThread(() =>
+                    {
+                        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+                        alert.SetMessage("Tapped on graphic");
+                        alert.Show();
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
             }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+
+            // Create a TextView for instructions.
+            TextView sampleInstructionsTextView = new TextView(this)
+            {
+                Text = "Tap on the graphic to identify it."
+            };
+            layout.AddView(sampleInstructionsTextView);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

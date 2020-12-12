@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,15 +11,19 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.DisplayScene
+namespace ArcGISRuntime.Samples.DisplayScene
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Display a scene",
+        category: "Layers",
+        description: "Display a scene with a terrain surface and some imagery.",
+        instructions: "When loaded, the sample will display a scene. Pan and zoom to explore the scene.",
+        tags: new[] { "3D", "basemap", "elevation", "scene", "surface" })]
     public partial class DisplayScene : ContentPage
     {
         public DisplayScene()
         {
             InitializeComponent();
-
-            Title = "Display scene";
 
             // Execute initialization 
             Initialize();
@@ -43,16 +47,18 @@ namespace ArcGISRuntimeXamarin.Samples.DisplayScene
             Surface mySurface = new Surface();
 
             // Define the string that points to the elevation image service
-            string myElevationImageService = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+            string myElevationImageService = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
             // Create a Uri from the elevation image service string
             Uri myUri = new Uri(myElevationImageService);
 
             // Create an ArcGIS tiled elevation 
-            ArcGISTiledElevationSource myArcGISTiledElevationSource = new ArcGISTiledElevationSource();
+            ArcGISTiledElevationSource myArcGISTiledElevationSource = new ArcGISTiledElevationSource
+            {
 
-            // Set the ArcGIS tiled elevation sources property to the Uri of the elevation image service
-            myArcGISTiledElevationSource.Source = myUri;
+                // Set the ArcGIS tiled elevation sources property to the Uri of the elevation image service
+                Source = myUri
+            };
 
             // Add the ArcGIS tiled elevation source to the surface's elevated sources collection
             mySurface.ElevationSources.Add(myArcGISTiledElevationSource);

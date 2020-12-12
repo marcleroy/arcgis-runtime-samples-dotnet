@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,22 +12,21 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
+namespace ArcGISRuntime.Samples.RenderUniqueValues
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Unique value renderer",
+        category: "Symbology",
+        description: "Render features in a layer using a distinct symbol for each unique attribute value.",
+        instructions: "The map with the symbolized feature layer will be shown automatically when the sample loads.",
+        tags: new[] { "draw", "renderer", "symbol", "symbology", "values" })]
     public partial class RenderUniqueValues : ContentPage
     {
         public RenderUniqueValues()
         {
             InitializeComponent ();
-
-            Title = "Render unique values";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -39,7 +38,7 @@ namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
             Map myMap = new Map(Basemap.CreateTopographic());
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
 
             // Create service feature table
@@ -75,8 +74,8 @@ namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
                 new UniqueValue("West South Central", "West South Central Region", westSouthCentralFillSymbol, "West South Central"));
 
             // Set the default region fill symbol (transparent with no outline) for regions not explicitly defined in the renderer
-            var defaultFillSymbol = new SimpleFillSymbol(
-                SimpleFillSymbolStyle.Null, Colors.Transparent, null);
+            SimpleFillSymbol defaultFillSymbol = new SimpleFillSymbol(
+                SimpleFillSymbolStyle.Cross, Colors.Gray, null);
             regionRenderer.DefaultSymbol = defaultFillSymbol;
             regionRenderer.DefaultLabel = "Other";
 

@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,24 +7,28 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Rasters;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterLayerGeoPackage
+namespace ArcGISRuntime.Samples.RasterLayerGeoPackage
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster layer (GeoPackage)",
+        category: "Data",
+        description: "Display a raster contained in a GeoPackage.",
+        instructions: "When the sample starts, a raster will be loaded from a GeoPackage and displayed in the map view.",
+        tags: new[] { "OGC", "container", "data", "image", "import", "layer", "package", "raster", "visualization" })]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("68ec42517cdd439e81b036210483e8e7")]
     public partial class RasterLayerGeoPackage : ContentPage
     {
         public RasterLayerGeoPackage()
         {
             InitializeComponent();
-
-            Title = "Raster layer (GeoPackage)";
 
             // Read data from the GeoPackage
             Initialize();
@@ -32,57 +36,43 @@ namespace ArcGISRuntimeXamarin.Samples.RasterLayerGeoPackage
 
         private async void Initialize()
         {
-            // Create a new map centered on Aurora Colorado
-            MyMapView.Map = new Map(BasemapType.LightGrayCanvas, 39.5517, -104.8589, 12);
+            // Create a new map
+            MyMapView.Map = new Map(Basemap.CreateLightGrayCanvas());
 
             // Get the full path
-            string geoPackagePath = await GetGeoPackagePath();
+            string geoPackagePath = GetGeoPackagePath();
 
-            // Open the GeoPackage
-            GeoPackage myGeoPackage = await GeoPackage.OpenAsync(geoPackagePath);
+            try
+            {
+                // Open the GeoPackage
+                GeoPackage myGeoPackage = await GeoPackage.OpenAsync(geoPackagePath);
 
-            // Read the raster images and get the first one
-            Raster gpkgRaster = myGeoPackage.GeoPackageRasters.FirstOrDefault();
+                // Read the raster images and get the first one
+                Raster gpkgRaster = myGeoPackage.GeoPackageRasters.FirstOrDefault();
 
-            // Make sure an image was found in the package
-            if (gpkgRaster == null) { return; }
+                // Make sure an image was found in the package
+                if (gpkgRaster == null) { return; }
 
-            // Create a layer to show the raster
-            RasterLayer newLayer = new RasterLayer(gpkgRaster);
-            await newLayer.LoadAsync();
+                // Create a layer to show the raster
+                RasterLayer newLayer = new RasterLayer(gpkgRaster);
+                await newLayer.LoadAsync();
 
-            // Add the image as a raster layer to the map (with default symbology)
-            MyMapView.Map.OperationalLayers.Add(newLayer);
+                // Set the viewpoint
+                await MyMapView.SetViewpointAsync(new Viewpoint(newLayer.FullExtent));
+
+                // Add the image as a raster layer to the map (with default symbology)
+                MyMapView.Map.OperationalLayers.Add(newLayer);
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
-        private async Task<string> GetGeoPackagePath()
+        private static string GetGeoPackagePath()
 
         {
-            #region offlinedata
-
-            // The GeoPackage will be downloaded from ArcGIS Online.
-            // The data manager (a component of the sample viewer), *NOT* the runtime handles the offline data process
-
-            // The desired GPKG is expected to be called "AuroraCO.shp"
-            string filename = "AuroraCO.gpkg";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "RasterLayerGeoPackage", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // If it's missing, download the GeoPackage
-                await DataManager.GetData("68ec42517cdd439e81b036210483e8e7", "RasterLayerGeoPackage");
-            }
-
-            // Return the path
-            return filepath;
-
-            #endregion offlinedata
+            return DataManager.GetDataFolder("68ec42517cdd439e81b036210483e8e7", "AuroraCO.gpkg");
         }
     }
 }

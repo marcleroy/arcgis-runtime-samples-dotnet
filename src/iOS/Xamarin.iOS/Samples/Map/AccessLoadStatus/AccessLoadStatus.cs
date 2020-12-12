@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,77 +13,90 @@ using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.AccessLoadStatus
+namespace ArcGISRuntime.Samples.AccessLoadStatus
 {
     [Register("AccessLoadStatus")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Access load status",
+        category: "Map",
+        description: "Determine the map's load status which can be: `NotLoaded`, `FailedToLoad`, `Loading`, `Loaded`.",
+        instructions: "The load status of the map will be displayed as the sample loads.",
+        tags: new[] { "LoadStatus", "Loadable pattern", "Map" })]
     public class AccessLoadStatus : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
-
-        // Control to show the Map's load status
-        private UITextView _loadStatusTextView;
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UILabel _loadStatusLabel;
 
         public AccessLoadStatus()
         {
             Title = "Access load status";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
-        }
-
-        private void Initialize()
-        {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateImagery());
-
-            // Register to handle loading status changes
-            myMap.LoadStatusChanged += OnMapsLoadStatusChanged;
-
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-        }
-
         private void OnMapsLoadStatusChanged(object sender, LoadStatusEventArgs e)
         {
-            // Make sure that the UI changes are done in the UI thread
+            // Make sure that the UI changes are done in the UI thread.
             InvokeOnMainThread(() =>
             {
-                // Update the load status information
-                _loadStatusTextView.Text = string.Format(
-                    "Map's load status : {0}", 
-                    e.Status.ToString());
+                // Update the load status information.
+                _loadStatusLabel.Text = $"Map's load status: {e.Status}";
             });
         }
 
-        private void CreateLayout()
+        public override void LoadView()
         {
-            // Create control to show the maps' loading status
-            _loadStatusTextView = new UITextView()
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            _loadStatusLabel = new UILabel
             {
-                Frame = new CoreGraphics.CGRect(
-                    0, yPageOffset, View.Bounds.Width, 40)
+                BackgroundColor = UIColor.FromWhiteAlpha(0f, .6f),
+                TextColor = UIColor.White,
+                TextAlignment = UITextAlignment.Center,
+                TranslatesAutoresizingMaskIntoConstraints = false
             };
-  
-            // Add MapView to the page
-            View.AddSubviews(_myMapView, _loadStatusTextView);
+
+            // Add the views.
+            View.AddSubviews(_myMapView, _loadStatusLabel);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.TopAnchor.ConstraintEqualTo(View.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+
+                _loadStatusLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _loadStatusLabel.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _loadStatusLabel.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _loadStatusLabel.HeightAnchor.ConstraintEqualTo(40)
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Create new Map with basemap.
+            Map myMap = new Map(Basemap.CreateImagery());
+
+            // Register to handle loading status changes.
+            myMap.LoadStatusChanged += OnMapsLoadStatusChanged;
+
+            // Show the map.
+            _myMapView.Map = myMap;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _myMapView.Map.LoadStatusChanged -= OnMapsLoadStatusChanged;
         }
     }
 }

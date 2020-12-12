@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -16,7 +16,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Esri.ArcGISRuntime.UI;
-using Esri.ArcGISRuntime.Xamarin.Forms;
 using System.IO;
 
 
@@ -28,12 +27,20 @@ using UIKit;
 
 #if __ANDROID__
 using Android.App;
+using Application = Xamarin.Forms.Application;
 using Xamarin.Auth;
-using System.IO;
 #endif
 
-namespace ArcGISRuntimeXamarin.Samples.AuthorMap
+namespace ArcGISRuntime.Samples.AuthorMap
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Create and save map",
+        category: "Map",
+        description: "Create and save a map as an ArcGIS `PortalItem` (i.e. web map).",
+        instructions: "1. Select the basemap and layers you'd like to add to your map.",
+        tags: new[] { "ArcGIS Online", "OAuth", "portal", "publish", "share", "web map" })]
+    [ArcGISRuntime.Samples.Shared.Attributes.ClassFile("SaveMapPage.xaml.cs")]
+    [ArcGISRuntime.Samples.Shared.Attributes.XamlFiles("SaveMapPage.xaml")]
     public partial class AuthorMap : ContentPage, IOAuthAuthorizeHandler
     {
         // OAuth-related values ...
@@ -41,14 +48,13 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private const string ArcGISOnlineUrl = "https://www.arcgis.com/sharing/rest";
 
         // Client ID for the app registered with the server (Portal Maps)
-        public string _appClientId = "2Gh53JRzkPtOENQq";
+        public static string AppClientId = "6wMAmbUEX1rvsOb4";
 
         // Redirect URL after a successful authorization (configured for the Portal Maps application)
-        private string _oAuthRedirectUrl = "https://developers.arcgis.com";
+        private string _oAuthRedirectUrl = "forms-samples-app://auth";
 
         // String array to store basemap constructor types
-        private string[] _basemapTypes = new string[]
-        {
+        private string[] _basemapTypes = {
             "Topographic",
             "Streets",
             "Imagery",
@@ -58,16 +64,14 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         // Dictionary of operational layer names and URLs
         private Dictionary<string, string> _operationalLayerUrls = new Dictionary<string, string>
         {
-            {"World Elevations", "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer"},
-            {"World Cities", "http://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/" },
-            {"US Census Data", "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer"}
+            {"World Elevations", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer"},
+            {"World Cities", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/" },
+            {"US Census Data", "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer"}
         };
 
         public AuthorMap()
         {
             InitializeComponent();
-
-            Title = "Author and save a map";
 
             // call a function to initialize the app (display a map, etc.)
             Initialize();
@@ -79,23 +83,21 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             CreateNewMap();
 
             // Show the default OAuth settings in the entry controls
-            ClientIDEntry.Text = _appClientId;
+            ClientIDEntry.Text = AppClientId;
             RedirectUrlEntry.Text = _oAuthRedirectUrl;
 
             // Change the style of the layer list view for Android and UWP
-            Device.OnPlatform(
-                Android: () =>
-                {
-                    // Black background on Android (transparent by default)
+            switch (Device.RuntimePlatform)
+            {
+                case Device.Android:
                     LayersList.BackgroundColor = Color.Black;
-                    OAuthSettingsGrid.BackgroundColor = Color.Black;
-                },
-                WinPhone: () =>
-                {
-                    // Semi-transparent background on Windows with a small margin around the control
+                    OAuthSettingsGrid.BackgroundColor = Color.Gray;
+                    break;
+                case Device.UWP:
                     LayersList.BackgroundColor = Color.FromRgba(255, 255, 255, 0.3);
                     LayersList.Margin = new Thickness(50);
-                });
+                    break;
+            }
         }
 
         private void OAuthSettingsCancel(object sender, EventArgs e)
@@ -105,8 +107,14 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
         private void SaveOAuthSettings(object sender, EventArgs e)
         {
-            _appClientId = ClientIDEntry.Text.Trim();
-            _oAuthRedirectUrl = RedirectUrlEntry.Text.Trim();
+            var appClientId = ClientIDEntry.Text.Trim();
+            var oAuthRedirectUrl = RedirectUrlEntry.Text.Trim();
+
+            if (!String.IsNullOrWhiteSpace(appClientId) && !String.IsNullOrWhiteSpace(oAuthRedirectUrl))
+            {
+                AppClientId = appClientId;
+                _oAuthRedirectUrl = oAuthRedirectUrl;
+            }
 
             OAuthSettingsGrid.IsVisible = false;
 
@@ -120,13 +128,13 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             if (e.Item == null) { return; }
 
             // Handle the event when a layer item is selected (tapped) in the layer list
-            var selectedItem = e.Item.ToString();
+            string selectedItem = e.Item.ToString();
 
             // See if this is one of the layers in the operational layers list 
             if (_operationalLayerUrls.ContainsKey(selectedItem))
             {
                 // Get the service URL from the operational layers dictionary
-                var value = _operationalLayerUrls[selectedItem];
+                string value = _operationalLayerUrls[selectedItem];
 
                 // Call a function to add the chosen operational layer
                 AddLayer(selectedItem, value);
@@ -144,7 +152,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private void ShowLayerList(object sender, EventArgs e)
         {
             // See which button was used to show the list and fill it accordingly
-            var button = sender as Button;
+            Button button = (Button)sender;
             if (button.Text == "Basemap")
             {
                 // Show the basemap list
@@ -163,10 +171,10 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private async void ShowSaveMapUI(object sender, EventArgs e)
         {
             // Create a SaveMapPage page for getting user input for the new web map item
-            var mapInputForm = new SaveMapPage();
+            SaveMapPage mapInputForm = new SaveMapPage();
 
             // If an existing map, show the UI for updating the item
-            var mapItem = MyMapView.Map.Item;
+            Item mapItem = MyMapView.Map.Item;
             if (mapItem != null)
             {
                 mapInputForm.ShowForUpdate(mapItem.Title,mapItem.Description, mapItem.Tags.ToArray());
@@ -176,8 +184,6 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             mapInputForm.OnSaveClicked += SaveMapAsync;
 
             // Navigate to the SaveMapPage UI
-            // Note: in each platform's project, there is a custom PageRenderer class called SaveMapPage that provides
-            //       platform-specific logic to challenge the user for OAuth credentials for ArcGIS Online when the page launches
             await Navigation.PushAsync(mapInputForm);
         }
 
@@ -185,7 +191,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private async void SaveMapAsync(object sender, SaveMapEventArgs e)
         {
             // Get the current map
-            var myMap = MyMapView.Map;
+            Map myMap = MyMapView.Map;
 
             try
             {
@@ -193,13 +199,13 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                 SaveMapProgressBar.IsVisible = true;
 
                 // Make sure the user is logged in to ArcGIS Online
-                var cred = await EnsureLoggedInAsync();
+                Credential cred = await EnsureLoggedInAsync();
                 AuthenticationManager.Current.AddCredential(cred);
 
                 // Get information entered by the user for the new portal item properties
-                var title = e.MapTitle;
-                var description = e.MapDescription;
-                var tags = e.Tags;
+                string title = e.MapTitle;
+                string description = e.MapDescription;
+                string[] tags = e.Tags;
 
                 // Apply the current extent as the map's initial extent
                 myMap.InitialViewpoint = MyMapView.GetCurrentViewpoint(ViewpointType.BoundingGeometry);
@@ -217,7 +223,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     await myMap.SaveAsAsync(agsOnline, null, title, description, tags, thumbnailImage);
 
                     // Report a successful save
-                    await DisplayAlert("Map Saved", "Saved '" + title + "' to ArcGIS Online!", "OK");
+                    await Application.Current.MainPage.DisplayAlert("Map Saved", "Saved '" + title + "' to ArcGIS Online!", "OK");
                 }
                 else
                 {
@@ -228,17 +234,17 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     Stream imageStream = await thumbnailImage.GetEncodedBufferAsync();
 
                     // Update the item thumbnail
-                    (myMap.Item as PortalItem).SetThumbnailWithImage(imageStream);
+                    ((PortalItem)myMap.Item).SetThumbnail(imageStream);
                     await myMap.SaveAsync();
 
                     // Report update was successful
-                    await DisplayAlert("Updates Saved", "Saved changes to '" + myMap.Item.Title + "'", "OK");
+                    await Application.Current.MainPage.DisplayAlert("Updates Saved", "Saved changes to '" + myMap.Item.Title + "'", "OK");
                 }
             }
             catch (Exception ex)
             {
                 // Show the exception message
-                await DisplayAlert("Unable to save map", ex.Message, "OK");
+                await Application.Current.MainPage.DisplayAlert("Unable to save map", ex.Message, "OK");
             }
             finally
             {
@@ -251,16 +257,18 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         {
             // Challenge the user for portal credentials (OAuth credential request for arcgis.com)
             Credential cred = null;
-            CredentialRequestInfo loginInfo = new CredentialRequestInfo();
-
-            // Use the OAuth implicit grant flow
-            loginInfo.GenerateTokenOptions = new GenerateTokenOptions
+            CredentialRequestInfo loginInfo = new CredentialRequestInfo
             {
-                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
-            };
 
-            // Indicate the url (portal) to authenticate with (ArcGIS Online)
-            loginInfo.ServiceUri = new Uri(ArcGISOnlineUrl);
+                // Use the OAuth implicit grant flow
+                GenerateTokenOptions = new GenerateTokenOptions
+                {
+                    TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                },
+
+                // Indicate the url (portal) to authenticate with (ArcGIS Online)
+                ServiceUri = new Uri(ArcGISOnlineUrl)
+            };
 
             try
             {
@@ -285,7 +293,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
         private void CreateNewMap()
         {
             // Create new Map with a light gray canvas basemap
-            var myMap = new Map(Basemap.CreateLightGrayCanvas());
+            Map myMap = new Map(Basemap.CreateLightGrayCanvas());
 
             // Add the Map to the MapView
             MyMapView.Map = myMap;
@@ -317,37 +325,40 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
         private void AddLayer(string layerName, string url)
         {
-            // Clear any existing layers
-            MyMapView.Map.OperationalLayers.Clear();
+            // See if the layer already exists, and remove it if it does
+            if (MyMapView.Map.OperationalLayers.FirstOrDefault(l => l.Name == layerName) is ArcGISMapImageLayer layer)
+            {
+                MyMapView.Map.OperationalLayers.Remove(layer);
+            }
+            else
+            {
+                // Otherwise, add the layer
+                Uri layerUri = new Uri(url);
 
-            // See if the layer already exists
-            ArcGISMapImageLayer layer = MyMapView.Map.OperationalLayers.FirstOrDefault(l => l.Name == layerName) as ArcGISMapImageLayer;
-
-            var layerUri = new Uri(url);
-
-            // Create a new map image layer
-            layer = new ArcGISMapImageLayer(layerUri);
-            layer.Name = layerName;
-
-            // Set it 50% opaque, and add it to the map
-            layer.Opacity = 0.5;
-            MyMapView.Map.OperationalLayers.Add(layer);
+                // Create and add a new map image layer
+                layer = new ArcGISMapImageLayer(layerUri);
+                layer.Name = layerName;
+                layer.Opacity = 0.5;
+                MyMapView.Map.OperationalLayers.Add(layer);
+            }
         }
 
         #region OAuth
         private void UpdateAuthenticationManager()
         {
             // Define the server information for ArcGIS Online
-            ServerInfo portalServerInfo = new ServerInfo();
-            // ArcGIS Online URI
-            portalServerInfo.ServerUri = new Uri(ArcGISOnlineUrl);
-            // Type of token authentication to use
-            portalServerInfo.TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit;
+            ServerInfo portalServerInfo = new ServerInfo
+            {
+                // ArcGIS Online URI
+                ServerUri = new Uri(ArcGISOnlineUrl),
+                // Type of token authentication to use
+                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+            };
 
             // Define the OAuth information
             OAuthClientInfo oAuthInfo = new OAuthClientInfo
             {
-                ClientId = _appClientId,
+                ClientId = AppClientId,
                 RedirectUri = new Uri(_oAuthRedirectUrl)
             };
             portalServerInfo.OAuthClientInfo = oAuthInfo;
@@ -407,15 +418,11 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
 
 #if __ANDROID__
             // Get the current Android Activity
-            var activity = Xamarin.Forms.Forms.Context as Activity; 
-#endif
-#if __IOS__
-            // Get the current iOS ViewController
-            var viewController = Xamarin.Forms.Platform.iOS.Platform.GetRenderer(this).ViewController;
+            Activity activity = (Activity)ArcGISRuntime.Droid.MainActivity.Instance;
 #endif
             // Create a new Xamarin.Auth.OAuth2Authenticator using the information passed in
             Xamarin.Auth.OAuth2Authenticator authenticator = new Xamarin.Auth.OAuth2Authenticator(
-                clientId: _appClientId,
+                clientId: AppClientId,
                 scope: "",
                 authorizeUrl: authorizeUri,
                 redirectUrl: callbackUri)
@@ -433,7 +440,11 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                 {
 #if __IOS__
                     // Dismiss the OAuth UI when complete
-                    viewController.DismissViewController(true, null);
+                    Device.BeginInvokeOnMainThread(() =>
+                    {
+                        var viewController = UIApplication.SharedApplication.KeyWindow.RootViewController;
+                        viewController.DismissViewController(true, null);
+                    });
 #endif
 
                     // Check if the user is authenticated
@@ -458,13 +469,13 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
                     // Cancel authentication
                     authenticator.OnCancelled();
                 }
+#if __ANDROID__ 
                 finally
                 {
                     // Dismiss the OAuth login
-#if __ANDROID__ 
                     activity.FinishActivity(99);
-#endif
                 }
+#endif
             };
 
             // If an error was encountered when authenticating, set the exception on the TaskCompletionSource
@@ -500,6 +511,7 @@ namespace ArcGISRuntimeXamarin.Samples.AuthorMap
             // Present the OAuth UI (on the app's UI thread) so the user can enter user name and password
             Device.BeginInvokeOnMainThread(() =>
             {
+                var viewController = UIApplication.SharedApplication.KeyWindow.RootViewController;
                 viewController.PresentViewController(authenticator.GetUI(), true, null);
             });
 #endif

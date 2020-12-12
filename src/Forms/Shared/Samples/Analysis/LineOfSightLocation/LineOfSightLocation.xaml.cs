@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,19 +12,20 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.GeoAnalysis;
 using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
+namespace ArcGISRuntime.Samples.LineOfSightLocation
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Line of sight (location)",
+        category: "Analysis",
+        description: "Perform a line of sight analysis between two points in real time.",
+        instructions: "Tap to place the starting point for the line. Tap again to place the end point.",
+        tags: new[] { "3D", "line of sight", "visibility", "visibility analysis" })]
     public partial class LineOfSightLocation : ContentPage
     {
         // URL for an image service to use as an elevation source
-        private string _elevationSourceUrl = @"http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private string _elevationSourceUrl = @"https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         // Location line of sight analysis
         private LocationLineOfSight _lineOfSightAnalysis;
@@ -41,8 +42,6 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
         public LineOfSightLocation()
         {
             InitializeComponent ();
-
-            Title = "Location line of sight";
 
             // Create the Scene, basemap, line of sight analysis, and analysis overlay
             Initialize();
@@ -83,6 +82,12 @@ namespace ArcGISRuntimeXamarin.Samples.LineOfSightLocation
 
         private void SceneViewTapped(object sender, Esri.ArcGISRuntime.Xamarin.Forms.GeoViewInputEventArgs e)
         {
+            // Ignore if tapped out of bounds (e.g. the sky).
+            if (e.Location == null)
+            {
+                return;
+            }
+
             // When the view is tapped, define the observer or target location with the tap point as appropriate
             if (_observerLocation == null)
             {

@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,15 +13,21 @@ using Esri.ArcGISRuntime.UI.GeoAnalysis;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ViewshedCamera
+namespace ArcGISRuntime.Samples.ViewshedCamera
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Viewshed for camera",
+        category: "Analysis",
+        description: "Analyze the viewshed for a camera. A viewshed shows the visible and obstructed areas from an observer's vantage point. ",
+        instructions: "The sample will start with a viewshed created from the initial camera location, so only the visible (green) portion of the viewshed will be visible. Move around the scene to see the obstructed (red) portions. Tap the button to update the viewshed to the current camera position.",
+        tags: new[] { "3D", "Scene", "viewshed", "visibility analysis" })]
     public partial class ViewshedCamera : ContentPage
     {
         // URL for a scene service of buildings in Brest, France
-        private string _buildingsServiceUrl = @"http://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/Buildings_Brest/SceneServer/layers/0";
+        private string _buildingsServiceUrl = @"https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/Buildings_Brest/SceneServer/layers/0";
 
         // URL for an image service to use as an elevation source
-        private string _elevationSourceUrl = @"http://scene.arcgis.com/arcgis/rest/services/BREST_DTM_1M/ImageServer";
+        private string _elevationSourceUrl = @"https://scene.arcgis.com/arcgis/rest/services/BREST_DTM_1M/ImageServer";
 
         // Location viewshed analysis to show visible and obstructed areas from the camera
         private LocationViewshed _viewshedForCamera;
@@ -29,8 +35,6 @@ namespace ArcGISRuntimeXamarin.Samples.ViewshedCamera
         public ViewshedCamera()
         {
             InitializeComponent ();
-
-            Title = "Viewshed for camera";
 
             // Create the Scene, basemap, camera, and location viewshed analysis
             Initialize();

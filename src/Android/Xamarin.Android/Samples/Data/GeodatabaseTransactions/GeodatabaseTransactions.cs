@@ -20,10 +20,17 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Android.Views;
 
-namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
+namespace ArcGISRuntime.Samples.GeodatabaseTransactions
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Geodatabase transactions",
+        category: "Data",
+        description: "Use transactions to manage how changes are committed to a geodatabase.",
+        instructions: "When the sample loads, a feature service is taken offline as a geodatabase. When the geodatabase is ready, you can add multiple types of features. To apply edits directly, uncheck the 'Require a transaction for edits' checkbox. When using transactions, use the buttons to start editing and stop editing. When you stop editing, you can choose to commit the changes or roll them back. At any point, you can synchronize the local geodatabase with the feature service.",
+        tags: new[] { "commit", "database", "geodatabase", "transact", "transactions" })]
     public class GeodatabaseTransactions : Activity
     {
         // URL for the editable feature service
@@ -79,68 +86,101 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
 
         private void CreateLayout()
         {
+            // Layout params for making buttons fill page width
+            LinearLayout.LayoutParams param = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                1.0f
+            );
+
             // Button to start an edit transaction
-            _startEditingButton = new Button(this);
-            _startEditingButton.Text = "Start";
-            var g = new GridLayout(this);
+            _startEditingButton = new Button(this)
+            {
+                Text = "Start",
+                LayoutParameters = param
+            };
             _startEditingButton.Click += BeginTransaction;
 
             // Button to stop a transaction
-            _stopEditingButton = new Button(this);
-            _stopEditingButton.Text = "Stop";
-            _stopEditingButton.Enabled = false;
+            _stopEditingButton = new Button(this)
+            {
+                Text = "Stop",
+                Enabled = false,
+                LayoutParameters = param
+            };
             _stopEditingButton.Click += StopEditTransaction;
 
             // Button to synchronize local edits with the service
-            _syncEditsButton = new Button(this);
-            _syncEditsButton.Text ="Sync";
-            _syncEditsButton.Enabled = false;
+            _syncEditsButton = new Button(this)
+            {
+                Text = "Sync",
+                Enabled = false,
+                LayoutParameters = param
+            };
             _syncEditsButton.Click += SynchronizeEdits;
 
             // Button to add bird features
-            _addBirdButton = new Button(this);
-            _addBirdButton.Text="Add Bird";
-            _addBirdButton.Enabled = false;
+            _addBirdButton = new Button(this)
+            {
+                Text = "Add Bird",
+                Enabled = false,
+                LayoutParameters = param
+            };
             _addBirdButton.Click += AddNewFeature;
 
             // Button to add marine features
-            _addMarineButton = new Button(this);
-            _addMarineButton.Text = "Add Marine";
-            _addMarineButton.Enabled = false;            
+            _addMarineButton = new Button(this)
+            {
+                Text = "Add Marine",
+                Enabled = false,
+                LayoutParameters = param
+            };
             _addMarineButton.Click += AddNewFeature;
 
             // Layout to hold the first row of buttons (start, stop, sync)
-            LinearLayout editButtonsRow1 = new LinearLayout(this);
-            editButtonsRow1.Orientation = Orientation.Horizontal;
+            LinearLayout editButtonsRow1 = new LinearLayout(this)
+            {
+                Orientation = Orientation.Horizontal
+            };
             editButtonsRow1.AddView(_startEditingButton);
             editButtonsRow1.AddView(_stopEditingButton);
             editButtonsRow1.AddView(_syncEditsButton);
 
             // Layout to hold the second row of buttons (add bird, add marine)
-            LinearLayout editButtonsRow2 = new LinearLayout(this);
-            editButtonsRow2.Orientation = Orientation.Horizontal;
+            LinearLayout editButtonsRow2 = new LinearLayout(this)
+            {
+                Orientation = Orientation.Horizontal
+            };
             editButtonsRow2.AddView(_addBirdButton);
             editButtonsRow2.AddView(_addMarineButton);
 
             // Layout for the 'require transaction' switch
-            LinearLayout editSwitchRow = new LinearLayout(this);
-            editSwitchRow.Orientation = Orientation.Horizontal;
-            _requireTransactionSwitch = new Switch(this);
-            _requireTransactionSwitch.Checked = true;
-            _requireTransactionSwitch.Text = "Require transaction";
+            LinearLayout editSwitchRow = new LinearLayout(this)
+            {
+                Orientation = Orientation.Horizontal
+            };
+            _requireTransactionSwitch = new Switch(this)
+            {
+                Checked = true,
+                Text = "Require transaction"
+            };
             _requireTransactionSwitch.CheckedChange += RequireTransactionChanged;
             editSwitchRow.AddView(_requireTransactionSwitch);
 
             // Progress bar
-            _progressBar = new ProgressBar(this);
-            _progressBar.Visibility = Android.Views.ViewStates.Gone;
+            _progressBar = new ProgressBar(this)
+            {
+                Visibility = Android.Views.ViewStates.Gone
+            };
 
             // Use the rest of the view to show status messages
             _messageTextBlock = new TextView(this);
 
             // Create the main layout
-            LinearLayout layout = new LinearLayout(this);
-            layout.Orientation = Orientation.Vertical;
+            LinearLayout layout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
 
             // Add the first row of buttons
             layout.AddView(editButtonsRow1);
@@ -178,14 +218,13 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             };
 
             // Create a new map with the oceans basemap and add it to the map view
-            var map = new Map(Basemap.CreateOceans());
-            _mapView.Map = map;
+            _mapView.Map = new Map(Basemap.CreateOceans());
         }
 
         private async Task GetLocalGeodatabase()
         {
             // Get the path to the local geodatabase for this platform (temp directory, for example)
-            var localGeodatabasePath = GetGdbPath();
+            string localGeodatabasePath = GetGdbPath();
 
             try
             {
@@ -200,11 +239,10 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 else
                 {
                     // Create a new GeodatabaseSyncTask with the uri of the feature server to pull from
-                    var uri = new Uri(SyncServiceUrl);
-                    var gdbTask = await GeodatabaseSyncTask.CreateAsync(uri);
+                    GeodatabaseSyncTask gdbTask = await GeodatabaseSyncTask.CreateAsync(new Uri(SyncServiceUrl));
 
                     // Create parameters for the task: layers and extent to include, out spatial reference, and sync model
-                    var gdbParams = await gdbTask.CreateDefaultGenerateGeodatabaseParametersAsync(_extent);
+                    GenerateGeodatabaseParameters gdbParams = await gdbTask.CreateDefaultGenerateGeodatabaseParametersAsync(_extent);
                     gdbParams.OutSpatialReference = _mapView.SpatialReference;
                     gdbParams.SyncModel = SyncModel.Layer;
                     gdbParams.LayerOptions.Clear();
@@ -263,24 +301,31 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             // Read the geodatabase tables and add them as layers
             foreach (GeodatabaseFeatureTable table in _localGeodatabase.GeodatabaseFeatureTables)
             {
-                // Load the table so the TableName can be read
-                await table.LoadAsync();
-
-                // Store a reference to the Birds table
-                if (table.TableName.ToLower().Contains("birds"))
+                try
                 {
-                    _birdTable = table;
-                }
+                    // Load the table so the TableName can be read
+                    await table.LoadAsync();
 
-                // Store a reference to the Marine table
-                if (table.TableName.ToLower().Contains("marine"))
+                    // Store a reference to the Birds table
+                    if (table.TableName.ToLower().Contains("birds"))
+                    {
+                        _birdTable = table;
+                    }
+
+                    // Store a reference to the Marine table
+                    if (table.TableName.ToLower().Contains("marine"))
+                    {
+                        _marineTable = table;
+                    }
+
+                    // Create a new feature layer to show the table in the map
+                    FeatureLayer layer = new FeatureLayer(table);
+                    RunOnUiThread(() => _mapView.Map.OperationalLayers.Add(layer));
+                }
+                catch (Exception e)
                 {
-                    _marineTable = table;
+                    new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
                 }
-
-                // Create a new feature layer to show the table in the map
-                var layer = new FeatureLayer(table);
-                RunOnUiThread(() => _mapView.Map.OperationalLayers.Add(layer));
             }
 
             // Handle the transaction status changed event
@@ -289,7 +334,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             // Zoom the map view to the extent of the generated local datasets
             RunOnUiThread(() =>
             {
-                _mapView.SetViewpointGeometryAsync(_marineTable.Extent);
+                _mapView.SetViewpoint(new Viewpoint(_marineTable.Extent));
                 _startEditingButton.Enabled = true;
             });
         }
@@ -313,18 +358,22 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
         private void BeginTransaction(object sender, EventArgs e)
         {
             // See if there is a transaction active for the geodatabase
-            if (!_localGeodatabase.IsInTransaction)
+            if (_localGeodatabase!= null && !_localGeodatabase.IsInTransaction)
             {
                 // If not, begin a transaction
                 _localGeodatabase.BeginTransaction();
                 _messageTextBlock.Text = "Transaction started";
+            }
+            else
+            {
+                _messageTextBlock.Text = "Not yet ready for new transaction.";
             }
         }
 
         private async void AddNewFeature(object sender, EventArgs args)
         {
             // See if it was the "Birds" or "Marine" button that was clicked
-            Button addFeatureButton = sender as Button;
+            Button addFeatureButton = (Button)sender;
 
             try
             {
@@ -340,7 +389,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 {
                     editTable = _birdTable;
                 }
-                else if (addFeatureButton == _addMarineButton)
+                else
                 {
                     editTable = _marineTable;
                 }
@@ -385,12 +434,16 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
 
             // Create the layout
-            LinearLayout dialogLayout = new LinearLayout(this);
-            dialogLayout.Orientation = Orientation.Vertical;
+            LinearLayout dialogLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
 
             // Create a button to commit edits
-            Button commitButton = new Button(this);
-            commitButton.Text = "Commit";
+            Button commitButton = new Button(this)
+            {
+                Text = "Commit"
+            };
 
             // Handle the click event for the Commit button
             commitButton.Click += (s, args) =>
@@ -407,8 +460,10 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             };
 
             // Create a button to rollback edits
-            Button rollbackButton = new Button(this);
-            rollbackButton.Text = "Rollback";
+            Button rollbackButton = new Button(this)
+            {
+                Text = "Rollback"
+            };
 
             // Handle the click event for the Rollback button
             rollbackButton.Click += (s, args) => 
@@ -425,8 +480,10 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             };
 
             // Create a button to cancel and return to the transaction
-            Button cancelButton = new Button(this);
-            cancelButton.Text = "Cancel";
+            Button cancelButton = new Button(this)
+            {
+                Text = "Cancel"
+            };
 
             // Handle the click event for the Cancel button
             rollbackButton.Click += (s, args) => _stopEditDialog.Dismiss();
@@ -475,10 +532,10 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
             try
             {
                 // Create a sync task with the URL of the feature service to sync
-                var syncTask = await GeodatabaseSyncTask.CreateAsync(new Uri(SyncServiceUrl));
+                GeodatabaseSyncTask syncTask = await GeodatabaseSyncTask.CreateAsync(new Uri(SyncServiceUrl));
 
                 // Create sync parameters
-                var taskParameters = await syncTask.CreateDefaultSyncGeodatabaseParametersAsync(_localGeodatabase);
+                SyncGeodatabaseParameters taskParameters = await syncTask.CreateDefaultSyncGeodatabaseParametersAsync(_localGeodatabase);
 
                 // Create a synchronize geodatabase job, pass in the parameters and the geodatabase
                 SyncGeodatabaseJob job = syncTask.SyncGeodatabase(taskParameters, _localGeodatabase);
@@ -513,7 +570,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
                 };
 
                 // Await the completion of the job
-                var result = await job.GetResultAsync();
+                 await job.GetResultAsync();
             }
             catch (Exception ex)
             {
@@ -530,7 +587,7 @@ namespace ArcGISRuntimeXamarin.Samples.GeodatabaseTransactions
         private void ShowStatusMessage(string title, string message)
         {
             // Display the message to the user
-            var builder = new AlertDialog.Builder(this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.SetMessage(message).SetTitle(title).Show();
         }
 

@@ -16,13 +16,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
+namespace ArcGISRuntime.Samples.ServiceFeatureTableManualCache
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Service feature table (manual cache)",
+        category: "Data",
+        description: "Display a feature layer from a service using the **manual cache** feature request mode.",
+        instructions: "Run the sample and pan and zoom around the map. Observe the features loaded from the table.",
+        tags: new[] { "cache", "feature request mode", "performance" })]
     public class ServiceFeatureTableManualCache : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         private ServiceFeatureTable _incidentsFeatureTable;
 
@@ -37,7 +43,7 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Create new Map with basemap
             Map myMap = new Map(Basemap.CreateTopographic());
@@ -48,14 +54,16 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
             myMap.InitialViewpoint = new Viewpoint(initialLocation, 500000);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
-               "http://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
+            Uri serviceUri = new Uri(
+               "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SF311/FeatureServer/0");
 
             // Create feature table for the incident feature service
-            _incidentsFeatureTable = new ServiceFeatureTable(serviceUri);
+            _incidentsFeatureTable = new ServiceFeatureTable(serviceUri)
+            {
 
-            // Define the request mode
-            _incidentsFeatureTable.FeatureRequestMode = FeatureRequestMode.ManualCache;
+                // Define the request mode
+                FeatureRequestMode = FeatureRequestMode.ManualCache
+            };
 
             // When feature table is loaded, populate data
             _incidentsFeatureTable.LoadStatusChanged += OnLoadedPopulateData;
@@ -83,18 +91,26 @@ namespace ArcGISRuntimeXamarin.Samples.ServiceFeatureTableManualCache
             };
 
             // Create list of the fields that are returned from the service
-            var outputFields = new string[] { "*" };
+            string[] outputFields = { "*" };
 
-            // Populate feature table with the data based on query
-            await _incidentsFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            try
+            {
+                // Populate feature table with the data based on query
+                await _incidentsFeatureTable.PopulateFromServiceAsync(queryParameters, true, outputFields);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

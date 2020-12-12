@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -15,32 +15,35 @@ using Foundation;
 using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeScene
+namespace ArcGISRuntime.Samples.FeatureLayerRenderingModeScene
 {
     [Register("FeatureLayerRenderingModeScene")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer rendering mode (scene)",
+        category: "Layers",
+        description: "Render features in a scene statically or dynamically by setting the feature layer rendering mode.",
+        instructions: "Tap the button to trigger the same zoom animation on both static and dynamicly rendered scenes.",
+        tags: new[] { "3D", "dynamic", "feature layer", "features", "rendering", "static" })]
     public class FeatureLayerRenderingModeScene : UIViewController
     {
-        // Create the UI components
-        private UILabel _staticLabel = new UILabel { Text = "Static Mode: " };
-        private UILabel _dynamicLabel = new UILabel { Text = "Dynamic Mode: " };
-        private UIButton _zoomButton = new UIButton();
+        // Hold references to UI controls.
+        private SceneView _staticSceneView;
+        private SceneView _dynamicSceneView;
+        private UIStackView _stackView;
+        private UIBarButtonItem _zoomButton;
 
-        // Create the scene views
-        private SceneView _myStaticScene = new SceneView();
-        private SceneView _myDynamicScene = new SceneView();
+        // Points for demonstrating zoom.
+        private readonly MapPoint _zoomedOutPoint = new MapPoint(-118.37, 34.46, SpatialReferences.Wgs84);
+        private readonly MapPoint _zoomedInPoint = new MapPoint(-118.45, 34.395, SpatialReferences.Wgs84);
 
-        // Points for demonstrating zoom
-        private MapPoint _zoomedOutPoint = new MapPoint(-118.37, 34.46, SpatialReferences.Wgs84);
-        private MapPoint _zoomedInPoint = new MapPoint(-118.45, 34.395, SpatialReferences.Wgs84);
-
-        // Viewpoints for each zoom level
+        // Viewpoints for each zoom level.
         private Camera _zoomedOutCamera;
         private Camera _zoomedInCamera;
 
-        // URI for the feature service
-        private string _featureService = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/";
+        // URI for the feature service.
+        private const string FeatureService = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/";
 
-        // Hold the current zoom state
+        // Hold the current zoom state.
         private bool _zoomed;
 
         public FeatureLayerRenderingModeScene()
@@ -50,108 +53,168 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeScene
 
         private void Initialize()
         {
-            // Initialize the cameras (viewpoints) with two points
+            // Initialize the cameras (viewpoints) with two points.
             _zoomedOutCamera = new Camera(_zoomedOutPoint, 42000, 0, 0, 0);
             _zoomedInCamera = new Camera(_zoomedInPoint, 2500, 90, 75, 0);
 
-            // Create the scene for displaying the feature layer in static mode
-            Scene staticScene = new Scene(); // Basemap omitted to make it easier to distinguish the rendering modes
-            staticScene.LoadSettings.PreferredPointFeatureRenderingMode = FeatureRenderingMode.Static;
-            staticScene.LoadSettings.PreferredPolygonFeatureRenderingMode = FeatureRenderingMode.Static;
-            staticScene.LoadSettings.PreferredPolylineFeatureRenderingMode = FeatureRenderingMode.Static;
+            // Create the scene for displaying the feature layer in static mode.
+            Scene staticScene = new Scene
+            {
+                InitialViewpoint = new Viewpoint(_zoomedOutPoint, _zoomedOutCamera)
+            };
 
-            // Create the scene for displaying the feature layer in dynamic mode
-            Scene dynamicScene = new Scene();
-            dynamicScene.LoadSettings.PreferredPointFeatureRenderingMode = FeatureRenderingMode.Dynamic;
-            dynamicScene.LoadSettings.PreferredPolygonFeatureRenderingMode = FeatureRenderingMode.Dynamic;
-            dynamicScene.LoadSettings.PreferredPolylineFeatureRenderingMode = FeatureRenderingMode.Dynamic;
+            // Create the scene for displaying the feature layer in dynamic mode.
+            Scene dynamicScene = new Scene
+            {
+                InitialViewpoint = new Viewpoint(_zoomedOutPoint, _zoomedOutCamera)
+            };
 
-            // Create the service feature tables
-            ServiceFeatureTable faultTable = new ServiceFeatureTable(new Uri(_featureService + "0"));
-            ServiceFeatureTable contactTable = new ServiceFeatureTable(new Uri(_featureService + "8"));
-            ServiceFeatureTable outcropTable = new ServiceFeatureTable(new Uri(_featureService + "9"));
+            foreach (string identifier in new[] { "8", "9", "0" })
+            {
+                // Create the table.
+                ServiceFeatureTable serviceTable = new ServiceFeatureTable(new Uri(FeatureService + identifier));
 
-            // Create the feature layers
-            FeatureLayer faultLayer = new FeatureLayer(faultTable);
-            FeatureLayer contactLayer = new FeatureLayer(contactTable);
-            FeatureLayer outcropLayer = new FeatureLayer(outcropTable);
+                // Create and add the static layer.
+                FeatureLayer staticLayer = new FeatureLayer(serviceTable)
+                {
+                    RenderingMode = FeatureRenderingMode.Static
+                };
+                staticScene.OperationalLayers.Add(staticLayer);
 
-            // Add the layers to each scene
-            staticScene.OperationalLayers.Add(faultLayer);
-            staticScene.OperationalLayers.Add(contactLayer);
-            staticScene.OperationalLayers.Add(outcropLayer);
-            dynamicScene.OperationalLayers.Add(faultLayer.Clone());
-            dynamicScene.OperationalLayers.Add(contactLayer.Clone());
-            dynamicScene.OperationalLayers.Add(outcropLayer.Clone());
+                // Create and add the dynamic layer.
+                FeatureLayer dynamicLayer = (FeatureLayer)staticLayer.Clone();
+                dynamicLayer.RenderingMode = FeatureRenderingMode.Dynamic;
+                dynamicScene.OperationalLayers.Add(dynamicLayer);
+            }
 
-            // Add the scenes to the scene views
-            _myStaticScene.Scene = staticScene;
-            _myDynamicScene.Scene = dynamicScene;
-
-            // Set the initial viewpoints for the scenes
-            _myStaticScene.SetViewpointCamera(_zoomedOutCamera);
-            _myDynamicScene.SetViewpointCamera(_zoomedOutCamera);
+            // Add the scenes to the scene views.
+            _staticSceneView.Scene = staticScene;
+            _dynamicSceneView.Scene = dynamicScene;
         }
 
-        private void CreateLayout()
+        private void _zoomButton_TouchUpInside(object sender, EventArgs e)
         {
-            // Set zoom button text
-            _zoomButton.SetTitle("Animated Zoom", UIControlState.Normal);
-
-            // Set label and button colors
-            _zoomButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            _staticLabel.TextColor = UIColor.Red;
-            _dynamicLabel.TextColor = UIColor.Red;
-
-            // Subscribe to button press events
-            _zoomButton.TouchUpInside += _zoomButton_TouchUpInside;
-
-            // Add views to page
-            View.AddSubviews(_myStaticScene, _myDynamicScene, _staticLabel, _dynamicLabel, _zoomButton);
-
-            // Set view background
-            View.BackgroundColor = UIColor.White;
-        }
-
-        private void _zoomButton_TouchUpInside(object sender, System.EventArgs e)
-        {
-            // Zoom out if zoomed
+            // Zoom out if zoomed.
             if (_zoomed)
             {
-                _myStaticScene.SetViewpointCameraAsync(_zoomedOutCamera, new TimeSpan(0, 0, 5));
-                _myDynamicScene.SetViewpointCameraAsync(_zoomedOutCamera, new TimeSpan(0, 0, 5));
+                _staticSceneView.SetViewpointCameraAsync(_zoomedOutCamera, new TimeSpan(0, 0, 5));
+                _dynamicSceneView.SetViewpointCameraAsync(_zoomedOutCamera, new TimeSpan(0, 0, 5));
             }
-            else // Zoom in otherwise
+            else // Zoom in otherwise.
             {
-                _myStaticScene.SetViewpointCameraAsync(_zoomedInCamera, new TimeSpan(0, 0, 5));
-                _myDynamicScene.SetViewpointCameraAsync(_zoomedInCamera, new TimeSpan(0, 0, 5));
+                _staticSceneView.SetViewpointCameraAsync(_zoomedInCamera, new TimeSpan(0, 0, 5));
+                _dynamicSceneView.SetViewpointCameraAsync(_zoomedInCamera, new TimeSpan(0, 0, 5));
             }
 
-            // Toggle zoom state
+            // Toggle zoom state.
             _zoomed = !_zoomed;
         }
 
         public override void ViewDidLoad()
         {
-            CreateLayout();
-            Initialize();
-
             base.ViewDidLoad();
+            Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            var topMargin = NavigationController.NavigationBar.Frame.Height + UIApplication.SharedApplication.StatusBarFrame.Height;
-            var centerLine = (View.Bounds.Height - topMargin) / 2;
+            // Create the views.
+            View = new UIView { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            // Setup the visual frames for the views
-            _myStaticScene.Frame = new CoreGraphics.CGRect(0, topMargin, View.Bounds.Width, centerLine - 25);
-            _myDynamicScene.Frame = new CoreGraphics.CGRect(0, topMargin + centerLine + 25, View.Bounds.Width, centerLine - 25);
-            _staticLabel.Frame = new CoreGraphics.CGRect(10, topMargin, View.Bounds.Width / 2, 50);
-            _dynamicLabel.Frame = new CoreGraphics.CGRect(10, centerLine + topMargin - 25, View.Bounds.Width / 2, 50);
-            _zoomButton.Frame = new CoreGraphics.CGRect(View.Bounds.Width / 2, centerLine + topMargin - 25, View.Bounds.Width / 2, 50);
+            _staticSceneView = new SceneView();
+            _staticSceneView.TranslatesAutoresizingMaskIntoConstraints = false;
+            _dynamicSceneView = new SceneView();
+            _dynamicSceneView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            base.ViewDidLayoutSubviews();
+            _stackView = new UIStackView(new UIView[] { _staticSceneView, _dynamicSceneView });
+            _stackView.TranslatesAutoresizingMaskIntoConstraints = false;
+            _stackView.Distribution = UIStackViewDistribution.FillEqually;
+            _stackView.Axis = View.TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact ? UILayoutConstraintAxis.Horizontal : UILayoutConstraintAxis.Vertical;
+
+            _zoomButton = new UIBarButtonItem();
+            _zoomButton.Title = "Zoom";
+
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _zoomButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace)
+            };
+
+            UILabel staticLabel = new UILabel
+            {
+                Text = "Static",
+                BackgroundColor = UIColor.FromWhiteAlpha(0f, .6f),
+                TextColor = UIColor.White,
+                TextAlignment = UITextAlignment.Center,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            UILabel dynamicLabel = new UILabel
+            {
+                Text = "Dynamic",
+                BackgroundColor = UIColor.FromWhiteAlpha(0f, .6f),
+                TextColor = UIColor.White,
+                TextAlignment = UITextAlignment.Center,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            // Add the views.
+            View.AddSubviews(_stackView, toolbar, staticLabel, dynamicLabel);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _stackView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _stackView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+                _stackView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _stackView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+
+                staticLabel.TopAnchor.ConstraintEqualTo(_staticSceneView.TopAnchor),
+                staticLabel.HeightAnchor.ConstraintEqualTo(40),
+                staticLabel.LeadingAnchor.ConstraintEqualTo(_staticSceneView.LeadingAnchor),
+                staticLabel.TrailingAnchor.ConstraintEqualTo(_staticSceneView.TrailingAnchor),
+
+                dynamicLabel.TopAnchor.ConstraintEqualTo(_dynamicSceneView.TopAnchor),
+                dynamicLabel.HeightAnchor.ConstraintEqualTo(40),
+                dynamicLabel.LeadingAnchor.ConstraintEqualTo(_dynamicSceneView.LeadingAnchor),
+                dynamicLabel.TrailingAnchor.ConstraintEqualTo(_dynamicSceneView.TrailingAnchor)
+            });
+        }
+
+        public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
+        {
+            base.TraitCollectionDidChange(previousTraitCollection);
+            if (View.TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact)
+            {
+                _stackView.Axis = UILayoutConstraintAxis.Horizontal;
+            }
+            else
+            {
+                _stackView.Axis = UILayoutConstraintAxis.Vertical;
+            }
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _zoomButton.Clicked += _zoomButton_TouchUpInside;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _zoomButton.Clicked -= _zoomButton_TouchUpInside;
         }
     }
 }

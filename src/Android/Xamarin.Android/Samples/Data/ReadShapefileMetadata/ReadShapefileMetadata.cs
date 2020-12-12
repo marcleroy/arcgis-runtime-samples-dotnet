@@ -8,19 +8,28 @@
 // language governing permissions and limitations under the License.
 
 using Android.App;
+using Android.Graphics;
 using Android.OS;
 using Android.Views;
 using Android.Widget;
-using ArcGISRuntimeXamarin.Managers;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
+using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
-using System.IO;
-using System.Threading.Tasks;
+using System;
+using ContextThemeWrapper = AndroidX.AppCompat.View.ContextThemeWrapper;
 
-namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
+namespace ArcGISRuntime.Samples.ReadShapefileMetadata
 {
-    [Activity]
+    [Activity(ConfigurationChanges = Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("d98b3e5293834c5f852f13c569930caa")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Read shapefile metadata",
+        category: "Data",
+        description: "Read a shapefile and display its metadata.",
+        instructions: "The shapefile's metadata will be displayed when you open the sample.",
+        tags: new[] { "credits", "description", "metadata", "package", "shape file", "shapefile", "summary", "symbology", "tags", "visualization" })]
     public class ReadShapefileMetadata : Activity
     {
         // Store the app's map view
@@ -46,67 +55,53 @@ namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
             Map streetMap = new Map(Basemap.CreateStreets());
 
             // Get the path to the downloaded shapefile
-            string filepath = await GetShapefilePath();
+            string filepath = GetShapefilePath();
 
-            // Open the shapefile
-            ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
-
-            // Read metadata about the shapefile and display it in the UI
-            _shapefileMetadata = myShapefile.Info;
-
-            // Create a feature layer to display the shapefile
-            FeatureLayer newFeatureLayer = new FeatureLayer(myShapefile);
-            await newFeatureLayer.LoadAsync();
-
-            // Zoom the map to the extent of the shapefile
-            _myMapView.SpatialReferenceChanged += async (s, e) =>
+            try
             {
-                await _myMapView.SetViewpointGeometryAsync(newFeatureLayer.FullExtent);
-            };
+                // Open the shapefile
+                ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
 
-            // Add the feature layer to the map
-            streetMap.OperationalLayers.Add(newFeatureLayer);
+                // Read metadata about the shapefile and display it in the UI
+                _shapefileMetadata = myShapefile.Info;
 
-            // Show the map in the MapView
-            _myMapView.Map = streetMap;
+                // Create a feature layer to display the shapefile
+                FeatureLayer newFeatureLayer = new FeatureLayer(myShapefile);
+                await newFeatureLayer.LoadAsync();
+
+                // Zoom the map to the extent of the shapefile
+                _myMapView.SpatialReferenceChanged += async (s, e) =>
+                {
+                    await _myMapView.SetViewpointGeometryAsync(newFeatureLayer.FullExtent);
+                };
+
+                // Add the feature layer to the map
+                streetMap.OperationalLayers.Add(newFeatureLayer);
+
+                // Show the map in the MapView
+                _myMapView.Map = streetMap;
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
-        private async Task<string> GetShapefilePath()
+        private static string GetShapefilePath()
         {
-            #region offlinedata
-            // The shapefile will be downloaded from ArcGIS Online
-            // The data manager (a component of the sample viewer, *NOT* the runtime
-            //     handles the offline data process
-
-            // The desired shapefile is expected to be called "TrailBikeNetwork.shp"
-            string filename = "TrailBikeNetwork.shp";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "ReadShapefileMetadata", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // Download the shapefile
-                await DataManager.GetData("d98b3e5293834c5f852f13c569930caa", "ReadShapefileMetadata");
-            }
-
-            // Return the path
-            return filepath;
-            #endregion offlinedata
+            return DataManager.GetDataFolder("d98b3e5293834c5f852f13c569930caa", "TrailBikeNetwork.shp");
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
             LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
-            
+
             // Add a button to show the metadata
-            Button showMetadataButton = new Button(this);
-            showMetadataButton.Text = "Metadata";
+            Button showMetadataButton = new Button(this)
+            {
+                Text = "Show Metadata"
+            };
             showMetadataButton.Click += ShowMetadataDialog;
             layout.AddView(showMetadataButton);
 
@@ -131,8 +126,8 @@ namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
     // A custom DialogFragment class to show shapefile metadata
     public class MetadataDialogFragment : DialogFragment
     {
-        ShapefileInfo _metadata;
-        ImageView _thumbnailImageView;
+        private ShapefileInfo _metadata;
+        private ImageView _thumbnailImageView;
 
         public MetadataDialogFragment(ShapefileInfo metadata)
         {
@@ -147,22 +142,28 @@ namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
             LinearLayout dialogView = null;
 
             // Get the context for creating the dialog controls
-            Android.Content.Context ctx = this.Activity.ApplicationContext;
+            Android.Content.Context ctx = Activity.ApplicationContext;
+            AndroidX.AppCompat.View.ContextThemeWrapper ctxWrapper = new ContextThemeWrapper(ctx, Android.Resource.Style.ThemeMaterialLight);
 
             // Set a dialog title
-            this.Dialog.SetTitle(_metadata.Credits);            
+            Dialog.SetTitle(_metadata.Credits);
 
             // The container for the dialog is a vertical linear layout
-            dialogView = new LinearLayout(ctx);
-            dialogView.Orientation = Orientation.Vertical;
-            
+            dialogView = new LinearLayout(ctxWrapper)
+            {
+                Orientation = Orientation.Vertical
+            };
+            dialogView.SetPadding(20, 20, 20, 20);
+
             // Add a text box for showing metadata summary
-            TextView summaryTextView = new TextView(ctx);
-            summaryTextView.Text = _metadata.Summary;
+            TextView summaryTextView = new TextView(ctxWrapper)
+            {
+                Text = _metadata.Summary
+            };
             dialogView.AddView(summaryTextView);
 
             // Add an image to show the thumbnail
-            _thumbnailImageView = new ImageView(ctx);
+            _thumbnailImageView = new ImageView(ctxWrapper);
             _thumbnailImageView.SetMinimumHeight(200);
             _thumbnailImageView.SetMinimumWidth(200);
             dialogView.AddView(_thumbnailImageView);
@@ -171,14 +172,18 @@ namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
             LoadThumbnail();
 
             // Add a text box for showing metadata tags
-            TextView tagsTextView = new TextView(ctx);
-            tagsTextView.Text = string.Join(",", _metadata.Tags);
+            TextView tagsTextView = new TextView(ctxWrapper)
+            {
+                Text = string.Join(",", _metadata.Tags)
+            };
             dialogView.AddView(tagsTextView);
 
             // Add a button to close the dialog
-            Button dismissButton = new Button(ctx);
-            dismissButton.Text = "OK";
-            dismissButton.Click += (s,e)=> this.Dismiss();
+            Button dismissButton = new Button(ctxWrapper)
+            {
+                Text = "OK"
+            };
+            dismissButton.Click += (s, e) => Dismiss();
             dialogView.AddView(dismissButton);
 
             // Return the new view for display
@@ -187,8 +192,15 @@ namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
 
         private async void LoadThumbnail()
         {
-            var img = await Esri.ArcGISRuntime.UI.RuntimeImageExtensions.ToImageSourceAsync(_metadata.Thumbnail);
-            _thumbnailImageView.SetImageBitmap(img);
+            try
+            {
+                Bitmap img = await _metadata.Thumbnail.ToImageSourceAsync();
+                _thumbnailImageView.SetImageBitmap(img);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(Context).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
     }
 }

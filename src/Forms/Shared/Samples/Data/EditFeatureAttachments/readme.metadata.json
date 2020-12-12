@@ -1,0 +1,44 @@
+{
+    "category": "Data",
+    "description": "Add, delete, and download attachments for features from a service.",
+    "formal_name": "EditFeatureAttachments",
+    "ignore": false,
+    "images": [
+        "EditFeatureAttachments.jpg"
+    ],
+    "keywords": [
+        "JPEG",
+        "PDF",
+        "PNG",
+        "TXT",
+        "data",
+        "image",
+        "picture"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.UWP": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Android": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Forms": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.iOS": "100.9.0",
+        "Xamarin.Plugin.FilePicker": "2.1.34"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/forms/sample-code/editfeatureattachments.htm"
+    ],
+    "relevant_apis": [
+        "ApplyEditsAsync",
+        "DeleteAttachmentAsync",
+        "FeatureLayer",
+        "FetchAttachmentsAsync",
+        "FetchDataAsync",
+        "ServiceFeatureTable",
+        "UpdateFeatureAsync"
+    ],
+    "snippets": [
+        "EditFeatureAttachments.xaml",
+        "EditFeatureAttachments.xaml.cs"
+    ],
+    "title": "Edit feature attachments"
+}

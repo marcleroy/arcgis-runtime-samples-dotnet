@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,8 +14,14 @@ using System;
 using System.Collections.Generic;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
+namespace ArcGISRuntime.Samples.WmsIdentify
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Identify WMS features",
+        category: "Layers",
+        description: "Identify features in a WMS layer and display the associated popup content.",
+        instructions: "Tap a feature to identify it. The HTML content associated with the feature will be displayed in a web view.",
+        tags: new[] { "IdentifyLayerAsync", "OGC", "ShowCalloutAt", "WMS", "callout", "web map service" })]
     public partial class WmsIdentify : ContentPage
     {
         // Create and hold the URL to the WMS service showing EPA water info
@@ -30,8 +36,6 @@ namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
         public WmsIdentify()
         {
             InitializeComponent();
-
-            Title = "Identify WMS features";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -48,41 +52,60 @@ namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
             // Create a new WMS layer displaying the specified layers from the service
             _wmsLayer = new WmsLayer(_wmsUrl, _wmsLayerNames);
 
-            // Load the layer
-            await _wmsLayer.LoadAsync();
+            try
+            {
+                // Load the layer
+                await _wmsLayer.LoadAsync();
 
-            // Add the layer to the map
-            MyMapView.Map.OperationalLayers.Add(_wmsLayer);
+                // Add the layer to the map
+                MyMapView.Map.OperationalLayers.Add(_wmsLayer);
 
-            // Zoom to the layer's extent
-            MyMapView.SetViewpoint(new Viewpoint(_wmsLayer.FullExtent));
+                // Zoom to the layer's extent
+                MyMapView.SetViewpoint(new Viewpoint(_wmsLayer.FullExtent));
 
-            // Subscribe to tap events - starting point for feature identification
-            MyMapView.GeoViewTapped += MyMapView_GeoViewTapped;
+                // Subscribe to tap events - starting point for feature identification
+                MyMapView.GeoViewTapped += MyMapView_GeoViewTapped;
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private async void MyMapView_GeoViewTapped(object sender, Esri.ArcGISRuntime.Xamarin.Forms.GeoViewInputEventArgs e)
         {
-            // Perform the identify operation
-            IdentifyLayerResult myIdentifyResult = await MyMapView.IdentifyLayerAsync(_wmsLayer, e.Position, 20, false);
-
-            // Return if there's nothing to show
-            if (myIdentifyResult.GeoElements.Count < 1)
+            try
             {
-                return;
+                // Perform the identify operation
+                IdentifyLayerResult myIdentifyResult = await MyMapView.IdentifyLayerAsync(_wmsLayer, e.Position, 20, false);
+
+                // Return if there's nothing to show
+                if (myIdentifyResult.GeoElements.Count < 1)
+                {
+                    return;
+                }
+
+                // Retrieve the identified feature, which is always a WmsFeature for WMS layers
+                WmsFeature identifiedFeature = (WmsFeature)myIdentifyResult.GeoElements[0];
+
+                // Retrieve the WmsFeature's HTML content
+                string htmlContent = identifiedFeature.Attributes["HTML"].ToString();
+
+                // Note that the service returns a boilerplate HTML result if there is no feature found.
+                // This test should work for most arcGIS-based WMS services, but results may vary.
+                if (!htmlContent.Contains("OBJECTID"))
+                {
+                    // Return without showing the result
+                    return;
+                }
+
+                // Show a page with the HTML content
+                await Navigation.PushAsync(new WmsIdentifyResultDisplayPage(htmlContent));
             }
-
-            // Retrieve the identified feature, which is always a WmsFeature for WMS layers
-            WmsFeature identifiedFeature = (WmsFeature)myIdentifyResult.GeoElements[0];
-
-            // Retrieve the WmsFeature's HTML content
-            string htmlContent = identifiedFeature.Attributes["HTML"].ToString();
-
-            // Note that the service returns a boilerplate HTML result if there is no feature found;
-            //    here might be a good place to check for that and filter out spurious results
-
-            // Show a page with the HTML content
-            await Navigation.PushAsync(new WmsIdentifyResultDisplayPage(htmlContent));
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }
     }
 
@@ -90,17 +113,19 @@ namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
     {
         public WmsIdentifyResultDisplayPage(string htmlContent)
         {
-            Title = "WMS Identify Result";
+            Title = "WMS identify result";
 
             // Create the web browser control
-            WebView htmlView = new WebView();
+            WebView htmlView = new WebView
+            {
 
-            // Display the string content as an HTML document
-            htmlView.Source = new HtmlWebViewSource() { Html = htmlContent };
+                // Display the string content as an HTML document
+                Source = new HtmlWebViewSource() { Html = htmlContent }
+            };
 
             // Create and add a layout to the page
             Grid layout = new Grid();
-            this.Content = layout;
+            Content = layout;
 
             // Add the webview to the page
             layout.Children.Add(htmlView);

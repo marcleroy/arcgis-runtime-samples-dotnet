@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,8 +12,14 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureCollectionLayerFromQuery
+namespace ArcGISRuntime.Samples.FeatureCollectionLayerFromQuery
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature collection layer (query)",
+        category: "Layers",
+        description: "Create a feature collection layer to show a query result from a service feature table.",
+        instructions: "When launched, this sample displays a map with point features as a feature collection layer. Pan and zoom to explore the map.",
+        tags: new[] { "layer", "query", "search", "table" })]
     public partial class FeatureCollectionLayerFromQuery : ContentPage
     {
         // Feature service URL to query for features
@@ -23,51 +29,51 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureCollectionLayerFromQuery
         {
             InitializeComponent();
 
-            Title = "Feature collection layer from query result";
-
             // call a function to initialize a map to display in the MyMapView control
             Initialize();
         }
 
         private void Initialize()
         {
-            try
-            {
-                // Create a new map with the oceans basemap and add it to the map view
-                Map myMap = new Map(Basemap.CreateOceans());
-                MyMapView.Map = myMap;
+            // Create a new map with the oceans basemap and add it to the map view
+            Map myMap = new Map(Basemap.CreateOceans());
+            MyMapView.Map = myMap;
 
-                // Call a function that will create a new feature collection layer from a service query
-                GetFeaturesFromQuery();
-            }
-            catch (Exception ex)
-            {
-                DisplayAlert("Error", "Unable to create feature collection layer: " + ex.Message, "OK");
-            }
+            // Call a function that will create a new feature collection layer from a service query
+            GetFeaturesFromQuery();
         }
 
         private async void GetFeaturesFromQuery()
         {
-            // Create a service feature table to get features from
-            ServiceFeatureTable featTable = new ServiceFeatureTable(new Uri(FeatureLayerUrl));
+            try
+            {
+                // Create a service feature table to get features from
+                ServiceFeatureTable featTable = new ServiceFeatureTable(new Uri(FeatureLayerUrl));
 
-            // Create a query to get all features in the table
-            QueryParameters queryParams = new QueryParameters();
-            queryParams.WhereClause = "1=1";
+                // Create a query to get all features in the table
+                QueryParameters queryParams = new QueryParameters
+                {
+                    WhereClause = "1=1"
+                };
 
-            // Query the table to get all features
-            FeatureQueryResult featureResult = await featTable.QueryFeaturesAsync(queryParams);
+                // Query the table to get all features
+                FeatureQueryResult featureResult = await featTable.QueryFeaturesAsync(queryParams);
 
-            // Create a new feature collection table from the result features
-            FeatureCollectionTable collectTable = new FeatureCollectionTable(featureResult);
+                // Create a new feature collection table from the result features
+                FeatureCollectionTable collectTable = new FeatureCollectionTable(featureResult);
 
-            // Create a feature collection and add the table
-            FeatureCollection featCollection = new FeatureCollection();
-            featCollection.Tables.Add(collectTable);
+                // Create a feature collection and add the table
+                FeatureCollection featCollection = new FeatureCollection();
+                featCollection.Tables.Add(collectTable);
 
-            // Create a layer to display the feature collection, add it to the map's operational layers
-            FeatureCollectionLayer featCollectionTable = new FeatureCollectionLayer(featCollection);
-            MyMapView.Map.OperationalLayers.Add(featCollectionTable);
+                // Create a layer to display the feature collection, add it to the map's operational layers
+                FeatureCollectionLayer featCollectionTable = new FeatureCollectionLayer(featCollection);
+                MyMapView.Map.OperationalLayers.Add(featCollectionTable);
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -9,6 +9,7 @@
 
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
+using Esri.ArcGISRuntime.Http;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
@@ -17,139 +18,68 @@ using System.Collections.Generic;
 using System.Linq;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
+namespace ArcGISRuntime.Samples.StatisticalQuery
 {
     [Register("StatisticalQuery")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Statistical query",
+        category: "Data",
+        description: "Query a table to get aggregated statistics back for a specific field.",
+        instructions: "Pan and zoom to define the extent for the query. Use the 'Cities in current extent' checkbox to control whether the query only includes features in the visible extent. Use the 'Cities grater than 5M' checkbox to filter the results to only those cities with a population greater than 5 million people. Tap 'Get statistics' to perform the query. The query will return population-based statistics from the combined results of all features matching the query criteria.",
+        tags: new[] { "analysis", "average", "bounding geometry", "filter", "intersect", "maximum", "mean", "minimum", "query", "spatial query", "standard deviation", "statistics", "sum", "variance" })]
     public class StatisticalQuery : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UIBarButtonItem _queryButton;
 
-        // URI for the world cities map service layer
-        private Uri _worldCitiesServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0");
+        // URI for the world cities map service layer.
+        private readonly Uri _worldCitiesServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0");
 
-        // World cities feature table
+        // World cities feature table.
         private FeatureTable _worldCitiesTable;
-
-        // Stack view UI control for arranging query controls
-        private UIStackView _controlsStackView;
-
-        // UI controls (switches) that will need to be referenced
-        private UISwitch _onlyInExtentSwitch;
-        private UISwitch _onlyBigCitiesSwitch;
 
         public StatisticalQuery()
         {
             Title = "Statistical query";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI
-            CreateLayout();
-
-            // Initialize the map and layers
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Get height of status bar and navigation bar
-            nfloat pageOffset = NavigationController.NavigationBar.Frame.Size.Height + UIApplication.SharedApplication.StatusBarFrame.Height;
-
-            // Setup the visual frame for the query controls
-            _controlsStackView.Frame = new CoreGraphics.CGRect(0,  pageOffset, View.Bounds.Width, 150);
-
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
-        }
-
         private void Initialize()
         {
-            // Create a new Map with the world streets vector basemap
+            // Create a new Map with the world streets vector basemap.
             Map myMap = new Map(Basemap.CreateStreetsVector());
 
-            // Create feature table using the world cities URI
+            // Create feature table using the world cities URI.
             _worldCitiesTable = new ServiceFeatureTable(_worldCitiesServiceUri);
 
-            // Create a new feature layer to display features in the world cities table
+            // Create a new feature layer to display features in the world cities table.
             FeatureLayer worldCitiesLayer = new FeatureLayer(_worldCitiesTable);
 
-            // Add the world cities layer to the map
+            // Add the world cities layer to the map.
             myMap.OperationalLayers.Add(worldCitiesLayer);
 
-            // Assign the map to the MapView
+            // Assign the map to the MapView.
             _myMapView.Map = myMap;
         }
 
-        private void CreateLayout()
+        private void GetStatisticsPressed(object sender, EventArgs e)
         {
-            this.View.BackgroundColor = UIColor.White;
+            var alert = UIAlertController.Create("Query statistics", "Get statistics for all cities matching these criteria", UIAlertControllerStyle.ActionSheet);
+            if (alert.PopoverPresentationController != null)
+            {
+                alert.PopoverPresentationController.BarButtonItem = _queryButton;
+            }
 
-            // Create a stack view to organize the query controls
-            _controlsStackView = new UIStackView();
-            _controlsStackView.Axis = UILayoutConstraintAxis.Vertical;
-            _controlsStackView.Alignment = UIStackViewAlignment.Center;
-            _controlsStackView.Distribution = UIStackViewDistribution.EqualSpacing;
-            _controlsStackView.Spacing = 5;
-
-            // Create a switch (and associated label) to include only big cities in the query
-            _onlyBigCitiesSwitch = new UISwitch();
-            _onlyBigCitiesSwitch.BackgroundColor = UIColor.White;
-            UILabel citySwitchLabel = new UILabel();
-            citySwitchLabel.BackgroundColor = UIColor.White;
-            citySwitchLabel.TextColor = UIColor.Blue;
-            citySwitchLabel.Text = "Only cities over 5M";
-
-            // Add the switch and label to a horizontal panel
-            UIStackView citySwitchStackView = new UIStackView();
-            citySwitchStackView.Axis = UILayoutConstraintAxis.Horizontal;
-            citySwitchStackView.Alignment = UIStackViewAlignment.Fill;
-            citySwitchStackView.Distribution = UIStackViewDistribution.EqualSpacing;
-            citySwitchStackView.AddArrangedSubview(citySwitchLabel);
-            citySwitchStackView.AddArrangedSubview(_onlyBigCitiesSwitch);
-
-            // Create a switch (and associated label) to include only cities in the current extent
-            _onlyInExtentSwitch = new UISwitch();
-            _onlyBigCitiesSwitch.BackgroundColor = UIColor.White;
-            UILabel extentSwitchLabel = new UILabel();
-            extentSwitchLabel.BackgroundColor = UIColor.White;
-            extentSwitchLabel.TextColor = UIColor.Blue;
-            extentSwitchLabel.Text = "Only cities in extent";
-
-            // Add the switch and label to a horizontal panel
-            UIStackView extentSwitchStackView = new UIStackView();
-            extentSwitchStackView.Axis = UILayoutConstraintAxis.Horizontal;
-            extentSwitchStackView.Alignment = UIStackViewAlignment.Fill;
-            extentSwitchStackView.Distribution = UIStackViewDistribution.EqualSpacing;
-            extentSwitchStackView.AddArrangedSubview(extentSwitchLabel);
-            extentSwitchStackView.AddArrangedSubview(_onlyInExtentSwitch);
-
-            // Create a button to invoke the query
-            var getStatsButton = new UIButton();
-            getStatsButton.SetTitle("Get Statistics", UIControlState.Normal);
-            getStatsButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            getStatsButton.BackgroundColor = UIColor.White;
-
-            // Handle the button tap to execute the statistics query
-            getStatsButton.TouchUpInside += OnExecuteStatisticsQueryClicked;
-
-            // Add controls to the stack view
-            _controlsStackView.AddArrangedSubview(extentSwitchStackView);
-            _controlsStackView.AddArrangedSubview(citySwitchStackView);
-            _controlsStackView.AddArrangedSubview(getStatsButton);
-
-            // Add MapView and UI controls to the page
-            View.AddSubviews(_myMapView, _controlsStackView);
+            alert.AddAction(UIAlertAction.Create("Cities in extent with pop. > 5M", UIAlertActionStyle.Default, action => QueryStatistics(true, true)));
+            alert.AddAction(UIAlertAction.Create("Cities with pop. > 5M", UIAlertActionStyle.Default, action => QueryStatistics(false, true)));
+            alert.AddAction(UIAlertAction.Create("Cities in extent", UIAlertActionStyle.Default, action => QueryStatistics(true, false)));
+            alert.AddAction(UIAlertAction.Create("All cities", UIAlertActionStyle.Default, action => QueryStatistics(false, false)));
+            PresentViewController(alert, true, null);
         }
 
-        private async void OnExecuteStatisticsQueryClicked(object sender, EventArgs e)
+        private async void QueryStatistics(bool onlyInExtent, bool onlyLargePop)
         {
-            // Create definitions for each statistic to calculate
+            // Create definitions for each statistic to calculate.
             StatisticDefinition statDefinitionAvgPop = new StatisticDefinition("POP", StatisticType.Average, "");
             StatisticDefinition statDefinitionMinPop = new StatisticDefinition("POP", StatisticType.Minimum, "");
             StatisticDefinition statDefinitionMaxPop = new StatisticDefinition("POP", StatisticType.Maximum, "");
@@ -157,74 +87,77 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
             StatisticDefinition statDefinitionStdDevPop = new StatisticDefinition("POP", StatisticType.StandardDeviation, "");
             StatisticDefinition statDefinitionVarPop = new StatisticDefinition("POP", StatisticType.Variance, "");
 
-            // Create a definition for count that includes an alias for the output
+            // Create a definition for count that includes an alias for the output.
             StatisticDefinition statDefinitionCount = new StatisticDefinition("POP", StatisticType.Count, "CityCount");
 
-            // Add the statistics definitions to a list
+            // Add the statistics definitions to a list.
             List<StatisticDefinition> statDefinitions = new List<StatisticDefinition>
-                        { statDefinitionAvgPop,
-                        statDefinitionCount,
-                        statDefinitionMinPop,
-                        statDefinitionMaxPop,
-                        statDefinitionSumPop,
-                        statDefinitionStdDevPop,
-                        statDefinitionVarPop
-                        };
+            {
+                statDefinitionAvgPop,
+                statDefinitionCount,
+                statDefinitionMinPop,
+                statDefinitionMaxPop,
+                statDefinitionSumPop,
+                statDefinitionStdDevPop,
+                statDefinitionVarPop
+            };
 
-            // Create the statistics query parameters, pass in the list of definitions
+            // Create the statistics query parameters, pass in the list of definitions.
             StatisticsQueryParameters statQueryParams = new StatisticsQueryParameters(statDefinitions);
 
-            // If only using features in the current extent, set up the spatial filter for the statistics query parameters
-            if (_onlyInExtentSwitch.On)
+            // If only using features in the current extent, set up the spatial filter for the statistics query parameters.
+            if (onlyInExtent)
             {
-                // Get the current extent (envelope) from the map view
+                // Get the current extent (envelope) from the map view.
                 Envelope currentExtent = _myMapView.GetCurrentViewpoint(ViewpointType.BoundingGeometry).TargetGeometry as Envelope;
 
-                // Set the statistics query parameters geometry with the envelope
+                // Set the statistics query parameters geometry with the current extent.
                 statQueryParams.Geometry = currentExtent;
 
-                // Set the spatial relationship to Intersects (which is the default)
+                // Set the spatial relationship to Intersects (which is the default).
                 statQueryParams.SpatialRelationship = SpatialRelationship.Intersects;
             }
 
-            // If only evaluating the largest cities (over 5 million in population), set up an attribute filter
-            if (_onlyBigCitiesSwitch.On)
+            // If only evaluating the largest cities (over 5 million in population), set up an attribute filter.
+            if (onlyLargePop)
             {
-                // Set a where clause to get the largest cities (could also use "POP_CLASS = '5,000,000 and greater'")
+                // Set a where clause to get the largest cities (could also use "POP_CLASS = '5,000,000 and greater'").
                 statQueryParams.WhereClause = "POP_RANK = 1";
             }
 
-            // Execute the statistical query with these parameters and await the results
-            StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
-
-            // Get the first (only) StatisticRecord in the results
-            StatisticRecord record = statQueryResult.FirstOrDefault();
-
-            // Make sure a record was returned
-            if (record == null || record.Statistics.Count == 0)
+            try
             {
-                // Notify the user that no results were returned
-                UIAlertView alert = new UIAlertView();
-                alert.Message = "No results were returned";
-                alert.Title = "Statistical Query";
-                alert.Show();
-                return;
-            }
+                // Execute the statistical query with these parameters and await the results.
+                StatisticsQueryResult statQueryResult = await _worldCitiesTable.QueryStatisticsAsync(statQueryParams);
 
-            // Display results
-            IReadOnlyDictionary<string, object> statistics = record.Statistics;
-            ShowStatsList(statistics);
+                // Get the first (only) StatisticRecord in the results.
+                StatisticRecord record = statQueryResult.FirstOrDefault();
+
+                // Make sure a record was returned.
+                if (record == null || record.Statistics.Count == 0)
+                {
+                    ShowMessage("No result", "No results were returned.");
+                    return;
+                }
+
+                // Display results.
+                ShowStatsList(record.Statistics);
+            }
+            catch (ArcGISWebException exception)
+            {
+                ShowMessage("There was a problem running the query.", exception.Message);
+            }
         }
 
         private void ShowStatsList(IReadOnlyDictionary<string, object> stats)
         {
-            // Create a new Alert Controller
-            UIAlertController statsAlert = UIAlertController.Create("Statistics", string.Empty, UIAlertControllerStyle.Alert);
+            // Create a string for statistics in plain text.
+            string statsList = "";
 
-            // Loop through all key/value pairs in the results
+            // Loop through all key/value pairs in the results.
             foreach (KeyValuePair<string, object> kvp in stats)
             {
-                // If the value is null, display "--"
+                // If the value is null, display "--".
                 string displayString = "--";
 
                 if (kvp.Value != null)
@@ -232,15 +165,82 @@ namespace ArcGISRuntimeXamarin.Samples.StatisticalQuery
                     displayString = kvp.Value.ToString();
                 }
 
-                // Add the statistics info as an alert action
-                statsAlert.AddAction(UIAlertAction.Create(kvp.Key + " : " + displayString, UIAlertActionStyle.Default, null));
+                // Add the statistics info to the output string.
+                statsList = $"{statsList}\n{kvp.Key} : {displayString}";
             }
 
-            // Add an Action to dismiss the alert
+            // Create a new Alert Controller.
+            UIAlertController statsAlert = UIAlertController.Create("Statistics", statsList, UIAlertControllerStyle.Alert);
+
+            // Add an Action to dismiss the alert.
             statsAlert.AddAction(UIAlertAction.Create("Dismiss", UIAlertActionStyle.Cancel, null));
 
-            // Display the alert
+            // Display the alert.
             PresentViewController(statsAlert, true, null);
+        }
+
+        private void ShowMessage(string title, string message)
+        {
+            new UIAlertView(title, message, (IUIAlertViewDelegate)null, "OK", null).Show();
+        }
+
+        public override void ViewDidLoad()
+        {
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            _queryButton = new UIBarButtonItem();
+            _queryButton.Title = "Get statistics";
+
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _queryButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace)
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _queryButton.Clicked += GetStatisticsPressed;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _queryButton.Clicked -= GetStatisticsPressed;
         }
     }
 }

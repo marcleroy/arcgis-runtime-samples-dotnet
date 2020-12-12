@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 
-namespace ArcGISRuntimeXamarin.Samples.SetInitialMapArea
+namespace ArcGISRuntime.Samples.SetInitialMapArea
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map initial extent",
+        category: "Map",
+        description: "Display the map at an initial viewpoint representing a bounding geometry.",
+        instructions: "When the sample loads, note that the map view opens at the initial viewpoint defined on the map.",
+        tags: new[] { "envelope", "extent", "initial", "viewpoint", "zoom" })]
     public class SetInitialMapArea : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -51,9 +57,10 @@ namespace ArcGISRuntimeXamarin.Samples.SetInitialMapArea
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

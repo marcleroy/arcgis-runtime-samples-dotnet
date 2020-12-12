@@ -16,13 +16,19 @@ using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
+namespace ArcGISRuntime.Samples.RenderUniqueValues
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Unique value renderer",
+        category: "Symbology",
+        description: "Render features in a layer using a distinct symbol for each unique attribute value.",
+        instructions: "The map with the symbolized feature layer will be shown automatically when the sample loads.",
+        tags: new[] { "draw", "renderer", "symbol", "symbology", "values" })]
     public class RenderUniqueValues : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -41,7 +47,7 @@ namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
             Map myMap = new Map(Basemap.CreateTopographic());
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
 
             // Create service feature table
@@ -78,7 +84,7 @@ namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
 
             // Set the default region fill symbol (transparent with no outline) for regions not explicitly defined in the renderer
             SimpleFillSymbol defaultFillSymbol = new SimpleFillSymbol(
-                SimpleFillSymbolStyle.Null, System.Drawing.Color.Transparent, null);
+                SimpleFillSymbolStyle.Cross, System.Drawing.Color.Gray, null);
             regionRenderer.DefaultSymbol = defaultFillSymbol;
             regionRenderer.DefaultLabel = "Other";
 
@@ -95,9 +101,10 @@ namespace ArcGISRuntimeXamarin.Samples.RenderUniqueValues
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

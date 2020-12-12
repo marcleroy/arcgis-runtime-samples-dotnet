@@ -1,0 +1,37 @@
+{
+    "category": "MapView",
+    "description": "Set the map view to a new viewpoint.",
+    "formal_name": "ChangeViewpoint",
+    "ignore": false,
+    "images": [
+        "ChangeViewpoint.jpg"
+    ],
+    "keywords": [
+        "animate",
+        "extent",
+        "pan",
+        "rotate",
+        "scale",
+        "view",
+        "zoom"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.iOS": "100.9.0"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/ios/sample-code/changeviewpoint.htm"
+    ],
+    "relevant_apis": [
+        "Geometry",
+        "Map",
+        "MapView",
+        "Point",
+        "Viewpoint"
+    ],
+    "snippets": [
+        "ChangeViewpoint.cs"
+    ],
+    "title": "Change viewpoint"
+}

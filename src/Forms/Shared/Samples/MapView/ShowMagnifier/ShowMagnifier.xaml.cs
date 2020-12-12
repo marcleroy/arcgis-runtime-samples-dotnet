@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -8,19 +8,24 @@
 // language governing permissions and limitations under the License.
 
 using Esri.ArcGISRuntime.Mapping;
+using Esri.ArcGISRuntime.UI;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ShowMagnifier
+namespace ArcGISRuntime.Samples.ShowMagnifier
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Show magnifier",
+        category: "MapView",
+        description: "Tap and hold on a map to show a magnifier.",
+        instructions: "Tap and hold on the map to show a magnifier, then drag across the map to move the magnifier. You can also pan the map while holding the magnifier, by dragging the magnifier to the edge of the map.",
+        tags: new[] { "magnify", "map", "zoom" })]
     public partial class ShowMagnifier : ContentPage
     {
         public ShowMagnifier()
         {
-            InitializeComponent ();
+            InitializeComponent();
 
-            Title = "Show magnifier";
-
-            // Create the UI, setup the control references and execute initialization 
+            // Initialize the sample
             Initialize();
         }
 
@@ -30,7 +35,10 @@ namespace ArcGISRuntimeXamarin.Samples.ShowMagnifier
             Map myMap = new Map(BasemapType.Topographic, 34.056295, -117.195800, 10);
 
             // Enable magnifier
-            MyMapView.InteractionOptions.IsMagnifierEnabled = true;
+            MyMapView.InteractionOptions = new MapViewInteractionOptions
+            {
+                IsMagnifierEnabled = true
+            };
 
             // Assign the map to the MapView
             MyMapView.Map = myMap;

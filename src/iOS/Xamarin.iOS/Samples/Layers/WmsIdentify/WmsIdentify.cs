@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,32 +7,40 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
+using System.Collections.Generic;
 using CoreGraphics;
 using Esri.ArcGISRuntime.Data;
-using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Ogc;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Collections.Generic;
 using UIKit;
+using WebKit;
 
-namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
+namespace ArcGISRuntime.Samples.WmsIdentify
 {
     [Register("WmsIdentify")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Identify WMS features",
+        category: "Layers",
+        description: "Identify features in a WMS layer and display the associated popup content.",
+        instructions: "Tap a feature to identify it. The HTML content associated with the feature will be displayed in a web view.",
+        tags: new[] { "IdentifyLayerAsync", "OGC", "ShowCalloutAt", "WMS", "callout", "web map service" })]
     public class WmsIdentify : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private WKWebView _webView;
+        private UIStackView _stackView;
 
-        // Create and hold the URL to the WMS service showing EPA water info
-        private Uri _wmsUrl = new Uri("https://watersgeo.epa.gov/arcgis/services/OWPROGRAM/SDWIS_WMERC/MapServer/WMSServer?request=GetCapabilities&service=WMS");
+        // Create and hold the URL to the WMS service showing EPA water info.
+        private readonly Uri _wmsUrl = new Uri("https://watersgeo.epa.gov/arcgis/services/OWPROGRAM/SDWIS_WMERC/MapServer/WMSServer?request=GetCapabilities&service=WMS");
 
-        // Create and hold a list of uniquely-identifying WMS layer names to display
-        private List<String> _wmsLayerNames = new List<string> { "4" };
+        // Create and hold a list of uniquely-identifying WMS layer names to display.
+        private readonly List<string> _wmsLayerNames = new List<string> {"4"};
 
-        // Hold the WMS layer
+        // Hold the WMS layer.
         private WmsLayer _wmsLayer;
 
         public WmsIdentify()
@@ -40,108 +48,133 @@ namespace ArcGISRuntimeXamarin.Samples.WmsIdentify
             Title = "Identify WMS features";
         }
 
-        private void CreateLayout()
-        {
-            // Add MapView to the page
-            View.AddSubviews(_myMapView);
-        }
-
-        public override void ViewDidLoad()
-        {
-            CreateLayout();
-            Initialize();
-
-            base.ViewDidLoad();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView, web view, and close result buttons
-            _myMapView.Frame = new CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-            base.ViewDidLayoutSubviews();
-        }
-
         private async void Initialize()
         {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateImagery());
+            // Show an imagery basemap.
+            _myMapView.Map = new Map(Basemap.CreateImagery());
 
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Create a new WMS layer displaying the specified layers from the service
+            // Create a new WMS layer displaying the specified layers from the service.
             _wmsLayer = new WmsLayer(_wmsUrl, _wmsLayerNames);
 
-            // Load the layer
-            await _wmsLayer.LoadAsync();
+            try
+            {
+                // Load the layer.
+                await _wmsLayer.LoadAsync();
 
-            // Add the layer to the map
-            _myMapView.Map.OperationalLayers.Add(_wmsLayer);
+                // Add the layer to the map.
+                _myMapView.Map.OperationalLayers.Add(_wmsLayer);
 
-            // Zoom to the layer's extent
-            _myMapView.SetViewpoint(new Viewpoint(_wmsLayer.FullExtent));
-
-            // Subscribe to tap events - starting point for feature identification
-            _myMapView.GeoViewTapped += _myMapView_GeoViewTapped;
+                // Zoom to the layer's extent.
+                _myMapView.SetViewpoint(new Viewpoint(_wmsLayer.FullExtent));
+            }
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
         }
 
         private async void _myMapView_GeoViewTapped(object sender, GeoViewInputEventArgs e)
         {
-            // Perform the identify operation
-            IdentifyLayerResult myIdentifyResult = await _myMapView.IdentifyLayerAsync(_wmsLayer, e.Position, 20, false);
-
-            // Return if there's nothing to show
-            if (myIdentifyResult.GeoElements.Count < 1)
+            try
             {
-                return;
+                // Perform the identify operation.
+                IdentifyLayerResult myIdentifyResult = await _myMapView.IdentifyLayerAsync(_wmsLayer, e.Position, 20, false);
+
+                // Return if there's nothing to show.
+                if (myIdentifyResult.GeoElements.Count < 1)
+                {
+                    return;
+                }
+
+                // Retrieve the identified feature, which is always a WmsFeature for WMS layers.
+                WmsFeature identifiedFeature = (WmsFeature) myIdentifyResult.GeoElements[0];
+
+                // Retrieve the WmsFeature's HTML content.
+                string htmlContent = identifiedFeature.Attributes["HTML"].ToString();
+
+                // Note that the service returns a boilerplate HTML result if there is no feature found.
+                //    This would be a good place to check if the result looks like it includes feature details. 
+
+                // Show a preview with the HTML content.
+                _webView.LoadHtmlString(new NSString(htmlContent), new NSUrl(""));
             }
-
-            // Retrieve the identified feature, which is always a WmsFeature for WMS layers
-            WmsFeature identifiedFeature = (WmsFeature)myIdentifyResult.GeoElements[0];
-
-            // Retrieve the WmsFeature's HTML content
-            string htmlContent = identifiedFeature.Attributes["HTML"].ToString();
-
-            // Note that the service returns a boilerplate HTML result if there is no feature found;
-            //    here might be a good place to check for that and filter out spurious results
-
-            // Show a preview with the HTML content
-            ShowHtml(htmlContent, e.Location);
+            catch (Exception ex)
+            {
+                new UIAlertView("Error", ex.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
         }
 
-        private void ShowHtml(string htmlContent, MapPoint position)
+        public override void ViewDidLoad()
         {
-            // Create the web view
-            WebKit.WKWebView myWebView = new WebKit.WKWebView(new CGRect(), new WebKit.WKWebViewConfiguration());
-
-            // Load the HTML content
-            myWebView.LoadHtmlString(new NSString(htmlContent), new NSUrl(""));
-
-            // Show the callout
-            _myMapView.ShowCalloutAt(position, new WebViewWrapper(myWebView));
+            base.ViewDidLoad();
+            Initialize();
         }
 
-        // Class to override UIView; ShowCalloutAt uses IntrinsicContentSize to calculate the layout.
-        // Because IntrinsicContentSize is get-only, a custom UI view is being used to override that behavior.
-        // The wrapper view overrides IntrinsicContentSize and updates the child webview to fill the custom view.
-        private class WebViewWrapper : UIView
+        public override void LoadView()
         {
-            // Override intrinsic size so that the view displays properly in a callout
-            public override CGSize IntrinsicContentSize => new CGSize(175, 100);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            // Hold a reference to the webview that is being wrapped
-            private WebKit.WKWebView webview;
+            _webView = new WKWebView(new CGRect(), new WKWebViewConfiguration());
 
-            public WebViewWrapper(WebKit.WKWebView view)
+            _myMapView = new MapView();
+
+            _stackView = new UIStackView(new UIView[] {_myMapView, _webView})
             {
-                this.webview = view;
+                Alignment = UIStackViewAlignment.Fill,
+                Distribution = UIStackViewDistribution.FillEqually,
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
 
-                // Add the webview as a subview
-                AddSubview(webview);
+            // Add the views.
+            View.AddSubview(_stackView);
 
-                // Make the webview frame fill the wrapper view
-                webview.Frame = new CGRect(0, 0, 175, 100);
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _stackView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _stackView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _stackView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _stackView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor)
+            });
+
+            SetLayoutOrientation();
+        }
+
+        public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
+        {
+            base.TraitCollectionDidChange(previousTraitCollection);
+            SetLayoutOrientation();
+        }
+
+        private void SetLayoutOrientation()
+        {
+            if (View.TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact)
+            {
+                // Landscape
+                _stackView.Axis = UILayoutConstraintAxis.Horizontal;
             }
+            else
+            {
+                // Portrait
+                _stackView.Axis = UILayoutConstraintAxis.Vertical;
+            }
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _myMapView.GeoViewTapped += _myMapView_GeoViewTapped;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _myMapView.GeoViewTapped -= _myMapView_GeoViewTapped;
         }
     }
 }

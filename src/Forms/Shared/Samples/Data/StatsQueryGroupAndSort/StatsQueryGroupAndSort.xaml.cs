@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -14,12 +14,18 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.StatsQueryGroupAndSort
+namespace ArcGISRuntime.Samples.StatsQueryGroupAndSort
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Statistical query group and sort",
+        category: "Data",
+        description: "Query a feature table for statistics, grouping and sorting by different fields.",
+        instructions: "The sample will start with some default options selected. You can immediately tap the \"Get Statistics\" button to see the results for these options. There are several ways to customize your queries:",
+        tags: new[] { "correlation", "data", "fields", "filter", "group", "sort", "statistics", "table" })]
     public partial class StatsQueryGroupAndSort : ContentPage
     {
         // URI for the US states map service
-        private Uri _usStatesServiceUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3");
+        private Uri _usStatesServiceUri = new Uri("https://services.arcgis.com/jIL9msH9OI208GCb/arcgis/rest/services/Counties_Obesity_Inactivity_Diabetes_2013/FeatureServer/0");
 
         // US states feature table
         private FeatureTable _usStatesTable;
@@ -36,8 +42,6 @@ namespace ArcGISRuntimeXamarin.Samples.StatsQueryGroupAndSort
         public StatsQueryGroupAndSort()
         {
             InitializeComponent();
-            
-            Title = "Statistical query group and sort";
 
             // Initialize the US states feature table and populate UI controls
             Initialize();
@@ -48,31 +52,38 @@ namespace ArcGISRuntimeXamarin.Samples.StatsQueryGroupAndSort
             // Create the US states feature table
             _usStatesTable = new ServiceFeatureTable(_usStatesServiceUri);
 
-            // Load the table
-            await _usStatesTable.LoadAsync();
+            try
+            {
+                // Load the table
+                await _usStatesTable.LoadAsync();
 
-            // Fill the fields combo and "group by" list with field names from the table
-            List<string> fieldNames = _usStatesTable.Fields.Select(field => field.Name).ToList();
-            FieldsComboBox.ItemsSource = fieldNames;
-            GroupFieldsListBox.ItemsSource = _usStatesTable.Fields;
+                // Fill the fields combo and "group by" list with field names from the table
+                List<string> fieldNames = _usStatesTable.Fields.Select(field => field.Name).ToList();
+                FieldsComboBox.ItemsSource = fieldNames;
+                GroupFieldsListBox.ItemsSource = _usStatesTable.Fields;
 
-            // Set the (initially empty) collection of fields as the "order by" fields list data source
-            OrderByFieldsListBox.ItemsSource = _orderByFields;
+                // Set the (initially empty) collection of fields as the "order by" fields list data source
+                OrderByFieldsListBox.ItemsSource = _orderByFields;
 
-            // Fill the statistics type combo with values from the StatisticType enum
-            StatTypeComboBox.ItemsSource = Enum.GetValues(typeof(StatisticType));
+                // Fill the statistics type combo with values from the StatisticType enum
+                StatTypeComboBox.ItemsSource = Enum.GetValues(typeof(StatisticType));
 
-            // Set the (initially empty) collection of statistic definitions as the statistics list box data source
-            StatFieldsListBox.ItemsSource = _statDefinitions;
+                // Set the (initially empty) collection of statistic definitions as the statistics list box data source
+                StatFieldsListBox.ItemsSource = _statDefinitions;
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         // Execute a statistical query using the parameters defined by the user and display the results
         private async void OnExecuteStatisticsQueryClicked(object sender, EventArgs e)
         {
             // Verify that there is at least one statistic definition
-            if (_statDefinitions.Count() == 0)
+            if (!_statDefinitions.Any())
             {
-                await DisplayAlert("Please define at least one statistic for the query.", "Statistical Query","OK");
+                await Application.Current.MainPage.DisplayAlert("Please define at least one statistic for the query.", "Statistical Query","OK");
                 return;
             }
 
@@ -91,42 +102,52 @@ namespace ArcGISRuntimeXamarin.Samples.StatsQueryGroupAndSort
                 statQueryParams.OrderByFields.Add(orderBy.OrderInfo);
             }
 
-            // Execute the statistical query with these parameters and await the results
-            StatisticsQueryResult statQueryResult = await _usStatesTable.QueryStatisticsAsync(statQueryParams);
+            // Ignore counties with missing data
+            statQueryParams.WhereClause = "\"State\" IS NOT NULL";
 
-            // Get results formatted as a lookup (list of group names and their associated dictionary of results)
-            ILookup<string,IReadOnlyDictionary<string,object>> resultsLookup = statQueryResult.ToLookup(result => string.Join(", ", result.Group.Values), result => result.Statistics);
-            
-            // Loop through the formatted results and build a list of classes to display as grouped results in the list view
-            ObservableCollection<ResultGroup> resultsGroupCollection = new ObservableCollection<ResultGroup>();
-            foreach (IGrouping<string,IReadOnlyDictionary<string,object>> group in resultsLookup)
+            try
             {
-                // Create a new group
-                ResultGroup resultGroup = new ResultGroup() { GroupName = group.Key };
+                // Execute the statistical query with these parameters and await the results
+                StatisticsQueryResult statQueryResult = await _usStatesTable.QueryStatisticsAsync(statQueryParams);
 
-                // Loop through all the results for this group and add them to the collection
-                foreach (IReadOnlyDictionary<string,object> resultSet in group)
+                // Get results formatted as a lookup (list of group names and their associated dictionary of results)
+                ILookup<string,IReadOnlyDictionary<string,object>> resultsLookup = statQueryResult.ToLookup(result => string.Join(", ", result.Group.Values), result => result.Statistics);
+            
+                // Loop through the formatted results and build a list of classes to display as grouped results in the list view
+                ObservableCollection<ResultGroup> resultsGroupCollection = new ObservableCollection<ResultGroup>();
+                foreach (IGrouping<string,IReadOnlyDictionary<string,object>> group in resultsLookup)
                 {
-                    foreach(KeyValuePair<string,object> result in resultSet)
+                    // Create a new group
+                    ResultGroup resultGroup = new ResultGroup() { GroupName = group.Key };
+
+                    // Loop through all the results for this group and add them to the collection
+                    foreach (IReadOnlyDictionary<string,object> resultSet in group)
                     {
-                        resultGroup.Add(new StatisticResult { FieldName = result.Key, StatValue = result.Value});
+                        foreach(KeyValuePair<string,object> result in resultSet)
+                        {
+                            resultGroup.Add(new StatisticResult { FieldName = result.Key, StatValue = result.Value});
+                        }
                     }
+
+                    // Add the group of results to the collection
+                    resultsGroupCollection.Add(resultGroup);
                 }
 
-                // Add the group of results to the collection
-                resultsGroupCollection.Add(resultGroup);
+                // Apply the results to the list view data source and show the results grid
+                StatResultsList.ItemsSource = resultsGroupCollection; 
+                ResultsGrid.IsVisible = true;
             }
-
-            // Apply the results to the list view data source and show the results grid
-            StatResultsList.ItemsSource = resultsGroupCollection; 
-            ResultsGrid.IsVisible = true;
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", ex.ToString(), "OK");
+            }
         }        
 
         // Handle when the switch for a "group by" field is toggled on or off by adding or removing the field from the collection
         private void GroupFieldCheckChanged(object sender, EventArgs e)
         {
             // Get the check box that raised the event (group field)
-            Switch groupFieldCheckBox = (sender as Switch);
+            Switch groupFieldCheckBox = (Switch)sender;
 
             // Get the field name
             string fieldName = groupFieldCheckBox.BindingContext.ToString();
@@ -230,7 +251,7 @@ namespace ArcGISRuntimeXamarin.Samples.StatsQueryGroupAndSort
             string selectedFieldName = GroupFieldsListBox.SelectedItem.ToString();
             if (!_groupByFields.Contains(selectedFieldName))
             {
-                DisplayAlert("Only fields used for grouping can be used to order results.", "Query", "OK");
+                Application.Current.MainPage.DisplayAlert("Only fields used for grouping can be used to order results.", "Query", "OK");
                 return;
             }
 

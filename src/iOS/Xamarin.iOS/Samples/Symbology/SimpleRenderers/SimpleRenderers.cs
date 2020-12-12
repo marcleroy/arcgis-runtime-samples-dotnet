@@ -1,102 +1,107 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System.Drawing;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System.Drawing;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.SimpleRenderers
+namespace ArcGISRuntime.Samples.SimpleRenderers
 {
     [Register("SimpleRenderers")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Simple renderer",
+        category: "Symbology",
+        description: "Display common symbols for all graphics in a graphics overlay with a renderer.",
+        instructions: "The sample loads with a predefined simple renderer, which displays a red cross simple marker symbol for the graphics in the graphics overlay.",
+        tags: new[] { "graphics", "marker", "renderer", "symbol", "symbolize", "symbology" })]
     public class SimpleRenderers : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public SimpleRenderers()
         {
             Title = "Simple renderer";
         }
 
-        public override void ViewDidLoad()
+        private async void Initialize()
         {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
-        }
-
-        private void Initialize()
-        {
-            // Create new map with basemap layer
+            // Create new map with labeled imagery basemap.
             Map myMap = new Map(Basemap.CreateImageryWithLabels());
 
-            
-
-            // Create several map points using the WGS84 coordinates (latitude and longitude)
+            // Create several map points using the WGS84 coordinates (latitude and longitude).
             MapPoint oldFaithfulPoint = new MapPoint(-110.828140, 44.460458, SpatialReferences.Wgs84);
             MapPoint cascadeGeyserPoint = new MapPoint(-110.829004, 44.462438, SpatialReferences.Wgs84);
             MapPoint plumeGeyserPoint = new MapPoint(-110.829381, 44.462735, SpatialReferences.Wgs84);
 
-            // Use the two points farthest apart to create an envelope
+            // Use the two points farthest apart to create an envelope.
             Envelope initialEnvelope = new Envelope(oldFaithfulPoint, plumeGeyserPoint);
 
-            // Use the envelope to define the map's visible area
-            myMap.InitialViewpoint = new Viewpoint(initialEnvelope);
-
-            // Create a graphics overlay 
+            // Create a graphics overlay.
             GraphicsOverlay myGraphicOverlay = new GraphicsOverlay();
 
-            // Create graphics based upon the map points
+            // Create graphics based upon the map points.
             Graphic oldFaithfulGraphic = new Graphic(oldFaithfulPoint);
             Graphic cascadeGeyserGraphic = new Graphic(cascadeGeyserPoint);
             Graphic plumeGeyserGraphic = new Graphic(plumeGeyserPoint);
 
-            // Add the graphics to the graphics overlay
+            // Add the graphics to the graphics overlay.
             myGraphicOverlay.Graphics.Add(oldFaithfulGraphic);
             myGraphicOverlay.Graphics.Add(cascadeGeyserGraphic);
             myGraphicOverlay.Graphics.Add(plumeGeyserGraphic);
 
-            // Create a simple marker symbol - red, cross, size 12
+            // Create a simple marker symbol - red, cross, size 12.
             SimpleMarkerSymbol mySymbol = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.Cross, Color.Red, 12);
 
-            // Create a simple renderer based on the simple marker symbol
-            SimpleRenderer myRenderer = new SimpleRenderer(mySymbol);
+            // Create a simple renderer based on the marker symbol. It will be applied to all graphics in the overlay.
+            myGraphicOverlay.Renderer = new SimpleRenderer(mySymbol);
 
-            // Apply the renderer to the graphics overlay (all graphics use the same symbol)
-            myGraphicOverlay.Renderer = myRenderer;
-
-            // Add the graphics overlay to the map view
+            // Add the graphics overlay to the map view.
             _myMapView.GraphicsOverlays.Add(myGraphicOverlay);
 
-            // Add the map to the map view
+            // Add the map to the map view.
             _myMapView.Map = myMap;
+
+            // Set the viewpoint to the envelope with padding.
+            await _myMapView.SetViewpointGeometryAsync(initialEnvelope, 50);
         }
 
-        private void CreateLayout()
-        {  
-            // Add MapView to the page
+        public override void ViewDidLoad()
+        {
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

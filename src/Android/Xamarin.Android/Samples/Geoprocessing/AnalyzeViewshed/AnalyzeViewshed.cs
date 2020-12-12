@@ -1,4 +1,4 @@
-// Copyright 2016 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -23,26 +23,31 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
+namespace ArcGISRuntime.Samples.AnalyzeViewshed
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Analyze viewshed (geoprocessing)",
+        category: "Geoprocessing",
+        description: "Calculate a viewshed using a geoprocessing service, in this case showing what parts of a landscape are visible from points on mountainous terrain.",
+        instructions: "Tap the map to see all areas visible from that point within a 15km radius. Clicking on an elevated area will highlight a larger part of the surrounding landscape. It may take a few seconds for the task to run and send back the results.",
+        tags: new[] { "geoprocessing", "heat map", "heatmap", "viewshed" })]
     public class AnalyzeViewshed : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
-
-        // Progress bar to show when the geoprocessing task is working
-        private ProgressBar _myProgressBar;
+        // Hold a reference to the map view.
+        private MapView _myMapView;
 
         // Url for the geoprocessing service
-        private const string _viewshedUrl =
-            "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Elevation/ESRI_Elevation_World/GPServer/Viewshed";
+        private const string _viewshedUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Elevation/ESRI_Elevation_World/GPServer/Viewshed";
 
-        // The graphics overlay to show where the user clicked in the map
+        // The graphics overlay to show where the user clicked in the map.
         private GraphicsOverlay _inputOverlay;
 
-        // The graphics overlay to display the result of the viewshed analysis
+        // The graphics overlay to display the result of the viewshed analysis.
         private GraphicsOverlay _resultOverlay;
+
+        // Alert dialog to show when the geoprocessing task is working.
+        private AlertDialog _alert;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -89,10 +94,17 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
             // Normalize the geometry if wrap-around is enabled
             //    This is necessary because of how wrapped-around map coordinates are handled by Runtime
             //    Without this step, the task may fail because wrapped-around coordinates are out of bounds.
-            if (_myMapView.IsWrapAroundEnabled) { geometry = GeometryEngine.NormalizeCentralMeridian(geometry) as MapPoint; }
+            if (_myMapView.IsWrapAroundEnabled) { geometry = (MapPoint)GeometryEngine.NormalizeCentralMeridian(geometry); }
 
-            // Execute the geoprocessing task using the user click location
-            await CalculateViewshed(geometry);
+            try
+            {
+                // Execute the geoprocessing task using the user click location
+                await CalculateViewshed(geometry);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private async Task CalculateViewshed(MapPoint location)
@@ -102,10 +114,10 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
             // is a problem with the execution of the geoprocessing task an error message will be displayed
 
             // Create new geoprocessing task using the url defined in the member variables section
-            var myViewshedTask = await GeoprocessingTask.CreateAsync(new Uri(_viewshedUrl));
+            GeoprocessingTask myViewshedTask = await GeoprocessingTask.CreateAsync(new Uri(_viewshedUrl));
 
             // Create a new feature collection table based upon point geometries using the current map view spatial reference
-            var myInputFeatures = new FeatureCollectionTable(new List<Field>(), GeometryType.Point, _myMapView.SpatialReference);
+            FeatureCollectionTable myInputFeatures = new FeatureCollectionTable(new List<Field>(), GeometryType.Point, _myMapView.SpatialReference);
 
             // Create a new feature from the feature collection table. It will not have a coordinate location (x,y) yet
             Feature myInputFeature = myInputFeatures.CreateFeature();
@@ -118,16 +130,17 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
 
             // Create the parameters that are passed to the used geoprocessing task
             GeoprocessingParameters myViewshedParameters =
-                new GeoprocessingParameters(GeoprocessingExecutionType.SynchronousExecute);
-
-            // Request the output features to use the same SpatialReference as the map view
-            myViewshedParameters.OutputSpatialReference = _myMapView.SpatialReference;
+                new GeoprocessingParameters(GeoprocessingExecutionType.SynchronousExecute)
+                {
+                    // Request the output features to use the same SpatialReference as the map view
+                    OutputSpatialReference = _myMapView.SpatialReference
+                };
 
             // Add an input location to the geoprocessing parameters
             myViewshedParameters.Inputs.Add("Input_Observation_Point", new GeoprocessingFeatures(myInputFeatures));
 
             // Create the job that handles the communication between the application and the geoprocessing task
-            var myViewshedJob = myViewshedTask.CreateJob(myViewshedParameters);
+            GeoprocessingJob myViewshedJob = myViewshedTask.CreateJob(myViewshedParameters);
 
             try
             {
@@ -135,11 +148,11 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
                 GeoprocessingResult myAnalysisResult = await myViewshedJob.GetResultAsync();
 
                 // Get the results from the outputs
-                GeoprocessingFeatures myViewshedResultFeatures = myAnalysisResult.Outputs["Viewshed_Result"] as GeoprocessingFeatures;
+                GeoprocessingFeatures myViewshedResultFeatures = (GeoprocessingFeatures)myAnalysisResult.Outputs["Viewshed_Result"];
 
                 // Add all the results as a graphics to the map
                 IFeatureSet myViewshedAreas = myViewshedResultFeatures.Features;
-                foreach (var myFeature in myViewshedAreas)
+                foreach (Feature myFeature in myViewshedAreas)
                 {
                     _resultOverlay.Graphics.Add(new Graphic(myFeature.Geometry));
                 }
@@ -149,16 +162,16 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
                 // Display an error message if there is a problem
                 if (myViewshedJob.Status == JobStatus.Failed && myViewshedJob.Error != null)
                 {
-                    var alertBuilder = new AlertDialog.Builder(this);
+                    AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                     alertBuilder.SetTitle("Geoprocessing error");
                     alertBuilder.SetMessage("Executing geoprocessing failed. " + myViewshedJob.Error.Message);
                     alertBuilder.Show();
                 }
                 else
                 {
-                    var alertBuilder = new AlertDialog.Builder(this);
+                    AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                     alertBuilder.SetTitle("Sample error");
-                    alertBuilder.SetMessage("An error occurred. " + ex.ToString());
+                    alertBuilder.SetMessage("An error occurred. " + ex);
                     alertBuilder.Show();
                 }
             }
@@ -215,41 +228,81 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeViewshed
         private void SetBusy(bool isBusy = true)
         {
             // This function toggles running of the 'progress' control feedback status to denote if
-            // the viewshed analysis is executing as a result of the user click on the map
-
+            // the viewshed analysis is executing as a result of the user click on the map.
             if (isBusy)
             {
-                // Show busy activity indication
-                _myProgressBar.Visibility = ViewStates.Visible;
+                // Show the busy alert dialog.
+                _alert.Show();
             }
             else
             {
-                // Remove the busy activity indication
-                _myProgressBar.Visibility = ViewStates.Invisible;
+                // Remove the busy alert dialog.
+                _alert.Hide();
             }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Label for the user instructions
-            var textview_Label1 = new TextView(this);
-            textview_Label1.Text = "Click a location on the map to perform the viewshed analysis.";
+            TextView textview_Label1 = new TextView(this)
+            {
+                Text = "Click a location on the map to perform the viewshed analysis."
+            };
             layout.AddView(textview_Label1);
 
-            // Add the progress bar to indicate the geoprocessing task is running; make invisible by default
-            _myProgressBar = new ProgressBar(this);
-            _myProgressBar.Indeterminate = true;
-            _myProgressBar.Visibility = ViewStates.Invisible;
-            layout.AddView(_myProgressBar);
-
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app
             SetContentView(layout);
+
+            // Create a layout to be used to alert the user when processing is happening.
+            LinearLayout alertLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
+
+            // Create paramaters for the items in the alert layout.
+            LinearLayout.LayoutParams param = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                1.0f
+            );
+            param.SetMargins(0, 10, 0, 10);
+
+            // Text for the alert.
+            TextView processingText = new TextView(this)
+            {
+                Text = "Processing...",
+                LayoutParameters = param,
+                Gravity = GravityFlags.Center,
+            };
+
+            // Add the progress bar to indicate the geoprocessing task is running; make invisible by default
+            ProgressBar progressBar = new ProgressBar(this)
+            {
+                Indeterminate = true,
+                //Visibility = ViewStates.Invisible,
+                LayoutParameters = param,
+                TextAlignment = TextAlignment.Center
+            };
+
+            // Add the text and progress bar to the Linear Layout.
+            alertLayout.AddView(processingText);
+            alertLayout.AddView(progressBar);
+
+            // Create the alert dialog.
+            _alert = new AlertDialog.Builder(this).Create();
+            _alert.SetCanceledOnTouchOutside(false);
+            _alert.Show();
+            _alert.Cancel();
+
+            // Add the layout to the alert
+            _alert.AddContentView(alertLayout, param);
         }
     }
 }

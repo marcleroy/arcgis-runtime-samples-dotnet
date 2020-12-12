@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,23 +7,24 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using System;
-using System.IO;
-using System.Threading.Tasks;
 using Xamarin.Forms;
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
+namespace ArcGISRuntime.Samples.SymbolizeShapefile
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Symbolize shapefile",
+        category: "Data",
+        description: "Display a shapefile with custom symbology.",
+        instructions: "Tap the button to apply a new symbology renderer to the feature layer created from the shapefile. ",
+        tags: new[] { "package", "shape file", "shapefile", "symbology", "visualization" })]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("d98b3e5293834c5f852f13c569930caa")]
     public partial class SymbolizeShapefile : ContentPage
     {
         // Hold reference to the feature layer so that its renderer can be changed when button is pushed
@@ -38,8 +39,6 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
         public SymbolizeShapefile()
         {
             InitializeComponent();
-
-            Title = "Symbolize a shapefile";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -60,13 +59,10 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             myMap.InitialViewpoint = viewpoint;
 
             // Create a shapefile feature table from the shapefile path
-            ShapefileFeatureTable myFeatureTable = new ShapefileFeatureTable(await GetShapefilePath());
+            ShapefileFeatureTable myFeatureTable = new ShapefileFeatureTable(GetShapefilePath());
 
             // Create a layer from the feature table
             _shapefileFeatureLayer = new FeatureLayer(myFeatureTable);
-
-            // Wait for the layer to load
-            await _shapefileFeatureLayer.LoadAsync();
 
             // Add the layer to the map
             myMap.OperationalLayers.Add(_shapefileFeatureLayer);
@@ -78,14 +74,24 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             // Create the alternate renderer
             _alternateRenderer = new SimpleRenderer(fillSymbol);
 
-            // Hold a reference to the default renderer (to enable switching between the renderers)
-            _defaultRenderer = _shapefileFeatureLayer.Renderer;
+            try
+            {
+                // Wait for the layer to load so that it will be assigned a default renderer
+                await _shapefileFeatureLayer.LoadAsync();
 
-            // Add the map to the mapview
-            MyMapView.Map = myMap;
+                // Hold a reference to the default renderer (to enable switching between the renderers)
+                _defaultRenderer = _shapefileFeatureLayer.Renderer;
 
-            // Enable changing symbology now that sample is loaded
-            MyRendererButton.IsEnabled = true;
+                // Add the map to the mapview
+                MyMapView.Map = myMap;
+
+                // Enable changing symbology now that sample is loaded
+                MyRendererButton.IsEnabled = true;
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private void Button_Clicked(object sender, EventArgs e)
@@ -101,28 +107,9 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             }
         }
 
-        private async Task<string> GetShapefilePath()
+        private static string GetShapefilePath()
         {
-            #region offlinedata
-
-            // The desired shapefile is expected to be Subdivisions.shp
-            string filename = "Subdivisions.shp";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "SymbolizeShapefile", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // Download the shapefile
-                await DataManager.GetData("d98b3e5293834c5f852f13c569930caa", "SymbolizeShapefile");
-            }
-            return filepath;
-
-            #endregion offlinedata
+            return DataManager.GetDataFolder("d98b3e5293834c5f852f13c569930caa", "Subdivisions.shp");
         }
     }
 }

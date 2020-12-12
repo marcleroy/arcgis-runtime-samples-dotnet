@@ -15,13 +15,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerUrl
+namespace ArcGISRuntime.Samples.FeatureLayerUrl
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer (feature service)",
+        category: "Layers",
+        description: "Show features from an online feature service.",
+        instructions: "Run the sample and view the feature service as an operational layer on top of the basemap. Zoom and pan around the map to see the features in greater detail.",
+        tags: new[] { "feature table", "layer", "layers", "service" })]
     public class FeatureLayerUrl : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -45,8 +51,8 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerUrl
             myMap.InitialViewpoint = new Viewpoint(initialLocation, 300000);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/9");
+            Uri serviceUri = new Uri(
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/9");
 
             // Create new FeatureLayer from service uri and
             FeatureLayer geologyLayer = new FeatureLayer(serviceUri);
@@ -61,9 +67,10 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerUrl
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

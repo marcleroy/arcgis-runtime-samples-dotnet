@@ -7,186 +7,212 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
+using System.Linq;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.Linq;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ManageBookmarks
+namespace ArcGISRuntime.Samples.ManageBookmarks
 {
     [Register("ManageBookmarks")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Manage bookmarks",
+        category: "Map",
+        description: "Access and create bookmarks on a map.",
+        instructions: "The map in the sample comes pre-populated with a set of bookmarks. To access a bookmark and move to that location, tap on a bookmark's name from the list. To add a bookmark, pan and/or zoom to a new location and tap on the 'Add Bookmark' button. Enter a unique name for the bookmark and tap ok, and the bookmark will be added to the list",
+        tags: new[] { "bookmark", "extent", "location", "zoom" })]
     public class ManageBookmarks : UIViewController
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UIBarButtonItem _bookmarksButton;
+        private UIBarButtonItem _addButton;
+        private UIAlertController _textInputAlertController;
 
         public ManageBookmarks()
         {
             Title = "Manage bookmarks";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
-            Initialize();
-        }
-
-		public override void ViewWillDisappear(bool animated)
-		{
-			base.ViewWillDisappear(animated);
-			NavigationController.ToolbarHidden = true;
-		}
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            base.ViewDidLayoutSubviews();
-        }
-
         private void Initialize()
         {
-            // Create new Map with basemap
-            Map myMap = new Map(Basemap.CreateImageryWithLabels());
+            // Create a map with labeled imagery basemap.
+            Map map = new Map(Basemap.CreateImageryWithLabels());
 
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
+            // Add default bookmarks.
+            AddDefaultBookmarks(map);
 
-            // Add default bookmarks
-            AddDefaultBookmarks();
+            // Zoom to the last bookmark.
+            map.InitialViewpoint = map.Bookmarks.Last().Viewpoint;
 
-            // Zoom to the last bookmark
-            myMap.InitialViewpoint = myMap.Bookmarks.Last().Viewpoint;
+            // Show the map.
+            _myMapView.Map = map;
         }
 
-        //Add some default bookmarks
-        private void AddDefaultBookmarks()
+        private void AddDefaultBookmarks(Map map)
         {
-            Viewpoint vp;
-            Bookmark myBookmark;
+            // Bookmark 1.
+            // Create a new bookmark.
+            Bookmark myBookmark = new Bookmark
+            {
+                Name = "Mysterious Desert Pattern",
+                Viewpoint = new Viewpoint(27.3805833, 33.6321389, 6000)
+            };
+            // Add the bookmark to bookmark collection of the map.
+            map.Bookmarks.Add(myBookmark);
 
-            // Bookmark-1
-            // Initialize a viewpoint pointing to a latitude longitude
-            vp = new Viewpoint(27.3805833, 33.6321389, 6000);
-            // Create a new bookmark
-            myBookmark = new Bookmark();
-            myBookmark.Name = "Mysterious Desert Pattern";
-            // Assign the viewpoint 
-            myBookmark.Viewpoint = vp;
-            // Add the bookmark to bookmark collection of the map
-            _myMapView.Map.Bookmarks.Add(myBookmark);
+            // Bookmark 2.
+            myBookmark = new Bookmark
+            {
+                Name = "Dormant Volcano",
+                Viewpoint = new Viewpoint(-39.299987, 174.060858, 600000)
+            };
+            map.Bookmarks.Add(myBookmark);
 
-            // Bookmark-2
-            vp = new Viewpoint(37.401573, -116.867808, 6000);
-            myBookmark = new Bookmark();
-            myBookmark.Name = "Strange Symbol";
-            myBookmark.Viewpoint = vp;
-            _myMapView.Map.Bookmarks.Add(myBookmark);
+            // Bookmark 3.
+            myBookmark = new Bookmark
+            {
+                Name = "Guitar-Shaped Forest",
+                Viewpoint = new Viewpoint(-33.867886, -63.985, 40000)
+            };
+            map.Bookmarks.Add(myBookmark);
 
-            // Bookmark-3
-            vp = new Viewpoint(-33.867886, -63.985, 40000);
-            myBookmark = new Bookmark();
-            myBookmark.Name = "Guitar-Shaped Forest";
-            myBookmark.Viewpoint = vp;
-            _myMapView.Map.Bookmarks.Add(myBookmark);
-
-            // Bookmark-4
-            vp = new Viewpoint(44.525049, -110.83819, 6000);
-            myBookmark = new Bookmark();
-            myBookmark.Name = "Grand Prismatic Spring";
-            myBookmark.Viewpoint = vp;
-            _myMapView.Map.Bookmarks.Add(myBookmark);
+            // Bookmark 4.
+            myBookmark = new Bookmark
+            {
+                Name = "Grand Prismatic Spring",
+                Viewpoint = new Viewpoint(44.525049, -110.83819, 6000)
+            };
+            map.Bookmarks.Add(myBookmark);
         }
 
         private void OnAddBookmarksButtonClicked(object sender, EventArgs e)
         {
-            //Create Alert for bookmark name
-            var textInputAlertController = UIAlertController.Create("Provide the bookmark name", 
-                string.Empty, UIAlertControllerStyle.Alert);
-            
-            //Add Text Input
-            textInputAlertController.AddTextField(textField => { });
+            // Create Alert for naming the bookmark.
+            if (_textInputAlertController == null)
+            {
+                _textInputAlertController = UIAlertController.Create("Provide the bookmark name", "", UIAlertControllerStyle.Alert);
 
-            //Add Actions
-            var cancelAction = UIAlertAction.Create("Cancel", UIAlertActionStyle.Cancel, null);
-            var okayAction = UIAlertAction.Create("Done", UIAlertActionStyle.Default, alertAction =>{
-                // Get the name from the text field
-                var name = textInputAlertController.TextFields[0].Text;
+                // Add Text Input.
+                _textInputAlertController.AddTextField(textField => { });
 
-                // Exit if the name is empty
-                if (string.IsNullOrEmpty(name))
-                    return;
+                void HandleAlertAction(UIAlertAction action)
+                {
+                    // Get the name from the text field.
+                    string name = _textInputAlertController.TextFields[0].Text;
 
-                // Check to see if there is a bookmark with same name
-                bool doesNameExist = _myMapView.Map.Bookmarks.Any(b => b.Name == name);
-                if (doesNameExist)
-                    return;
+                    // Exit if the name is empty.
+                    if (String.IsNullOrEmpty(name))
+                        return;
 
-                // Create a new bookmark
-                Bookmark myBookmark = new Bookmark();
-                myBookmark.Name = name;
-                // Get the current viewpoint from map and assign it to bookmark 
-                myBookmark.Viewpoint = _myMapView.GetCurrentViewpoint(ViewpointType.BoundingGeometry);
-                // Add the bookmark to bookmark collection of the map
-                _myMapView.Map.Bookmarks.Add(myBookmark);
+                    // Check to see if there is a bookmark with same name.
+                    bool doesNameExist = _myMapView.Map.Bookmarks.Any(b => b.Name == name);
+                    if (doesNameExist)
+                        return;
 
-            });
+                    // Create a new bookmark.
+                    Bookmark myBookmark = new Bookmark
+                    {
+                        Name = name,
+                        // Get the current viewpoint from map and assign it to bookmark .
+                        Viewpoint = _myMapView.GetCurrentViewpoint(ViewpointType.BoundingGeometry)
+                    };
 
-            textInputAlertController.AddAction(cancelAction);
-            textInputAlertController.AddAction(okayAction);
+                    // Add the bookmark to bookmark collection of the map.
+                    _myMapView.Map.Bookmarks.Add(myBookmark);
+                }
 
-            //Present Alert
-            PresentViewController(textInputAlertController, true, null);
+                // Add Actions.
+                _textInputAlertController.AddAction(UIAlertAction.Create("Cancel", UIAlertActionStyle.Cancel, null));
+                _textInputAlertController.AddAction(UIAlertAction.Create("Done", UIAlertActionStyle.Default, HandleAlertAction));
+            }
+
+            // Show the alert.
+            PresentViewController(_textInputAlertController, true, null);
         }
 
         private void OnShowBookmarksButtonClicked(object sender, EventArgs e)
         {
-            // Create a new Alert Controller
-            UIAlertController actionAlert = UIAlertController.Create("Bookmarks", string.Empty,
+            // Create a new Alert Controller.
+            UIAlertController actionAlert = UIAlertController.Create("Bookmarks", "",
                 UIAlertControllerStyle.Alert);
 
-            // Add Bookmarks as Actions
-            foreach(Bookmark myBookmark in _myMapView.Map.Bookmarks)
+            // Add Bookmarks as Actions.
+            foreach (Bookmark myBookmark in _myMapView.Map.Bookmarks)
             {
-                actionAlert.AddAction(UIAlertAction.Create(myBookmark.Name, UIAlertActionStyle.Default, 
-                    (action) =>{
-                        _myMapView.SetViewpoint(myBookmark.Viewpoint);
-                    }));
+                actionAlert.AddAction(UIAlertAction.Create(myBookmark.Name, UIAlertActionStyle.Default, action => _myMapView.SetViewpoint(myBookmark.Viewpoint)));
             }
 
-            // Display the alert
+            // Display the alert.
             PresentViewController(actionAlert, true, null);
         }
 
-        private void CreateLayout()
+        public override void ViewDidLoad()
         {
-            // Setup the visual frame for the MapView
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView {BackgroundColor = ApplicationTheme.BackgroundColor};
+
             _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Create a bookmark button to show existing bookmarks
-            var showBookmarksButton = new UIBarButtonItem() { Title = "Bookmarks", Style = UIBarButtonItemStyle.Plain };
-            showBookmarksButton.Clicked += OnShowBookmarksButtonClicked;
+            _bookmarksButton = new UIBarButtonItem();
+            _bookmarksButton.Title = "Bookmarks";
 
-            // Create a button to add new bookmark
-            var addBookmarkButton = new UIBarButtonItem(UIBarButtonSystemItem.Add);
-            addBookmarkButton.Clicked += OnAddBookmarksButtonClicked;
+            _addButton = new UIBarButtonItem(UIBarButtonSystemItem.Add);
 
-            // Add the buttons to the toolbar
-            SetToolbarItems(new UIBarButtonItem[] {showBookmarksButton,
-                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace, null),
-                addBookmarkButton}, false);
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                _bookmarksButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _addButton
+            };
 
-            // Show the toolbar
-            NavigationController.ToolbarHidden = false;
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
 
-            // Add MapView to the page
-            View.AddSubviews(_myMapView);
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _bookmarksButton.Clicked += OnShowBookmarksButtonClicked;
+            _addButton.Clicked += OnAddBookmarksButtonClicked;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _bookmarksButton.Clicked -= OnShowBookmarksButtonClicked;
+            _addButton.Clicked -= OnAddBookmarksButtonClicked;
+
+            // Remove the reference to the alert controller, preventing a memory leak.
+            _textInputAlertController = null;
         }
     }
 }

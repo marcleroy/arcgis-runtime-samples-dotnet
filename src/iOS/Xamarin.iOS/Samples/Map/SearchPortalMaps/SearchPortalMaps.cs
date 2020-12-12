@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,6 +7,7 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using Esri.ArcGISRuntime;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Portal;
 using Esri.ArcGISRuntime.Security;
@@ -19,292 +20,198 @@ using System.Threading.Tasks;
 using UIKit;
 using Xamarin.Auth;
 
-namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
+namespace ArcGISRuntime.Samples.SearchPortalMaps
 {
     [Register("SearchPortalMaps")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Search for webmap",
+        category: "Map",
+        description: "Find webmap portal items by using a search term.",
+        instructions: "Enter search terms into the search bar. Once the search is complete, a list is populated with the resultant webmaps. Tap on a webmap to set it to the map view. Scrolling to the bottom of the webmap recycler view will get more results.",
+        tags: new[] { "keyword", "query", "search", "webmap" })]
     public class SearchPortalMaps : UIViewController, IOAuthAuthorizeHandler
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UIBarButtonItem _searchButton;
+        private UIBarButtonItem _myMapsButton;
+        private bool _myMapsLastClicked;
 
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
-
-        private UISegmentedControl _segmentButton = new UISegmentedControl();
-        private UIToolbar _toolbar = new UIToolbar();
-
-        // Use a TaskCompletionSource to track the completion of the authorization
+        // Use a TaskCompletionSource to track the completion of the authorization.
         private TaskCompletionSource<IDictionary<string, string>> _taskCompletionSource;
 
-        // Overlay with entry controls for OAuth configuration (client ID and redirect Url)
-        private OAuthPropsDialogOverlay _oauthInfoUI;
-
-        // Overlay with entry control for web map search text
-        private SearchMapsDialogOverlay _searchMapsUI;
-
-        // Variables for OAuth config and default values ...
-        // URL of the server to authenticate with
+        // Variables for OAuth configuration and default values.
+        // URL of the server to authenticate with.
         private const string ServerUrl = "https://www.arcgis.com/sharing/rest";
 
-        // TODO: Add Client ID for an app registered with the server
-        private string _appClientId = "2Gh53JRzkPtOENQq";
+        // TODO: Add Client ID for an app registered with the server.
+        private const string AppClientId = "2Gh53JRzkPtOENQq";
 
-        // TODO: Add URL for redirecting after a successful authorization
-        //       Note - this must be a URL configured as a valid Redirect URI with your app
-        private string _oAuthRedirectUrl = "https://developers.arcgis.com";
+        // TODO: Add URL for redirecting after a successful authorization.
+        //       Note - this must be a URL configured as a valid Redirect URI with your app.
+        private const string OAuthRedirectUrl = "https://developers.arcgis.com";
+
+        // Hold a reference to the authenticator.
+        private Xamarin.Auth.OAuth2Authenticator _auth;
 
         public SearchPortalMaps()
         {
             Title = "Search a portal for maps";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization
-            CreateLayout();
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-
-            if (_searchMapsUI != null)
-            {
-                _searchMapsUI.Bounds = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height);
-                _searchMapsUI.Frame = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height);
-                _searchMapsUI.Center = View.Center;
-            }
-
-            if (_oauthInfoUI != null)
-            {
-                _oauthInfoUI.Bounds = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height);
-                _oauthInfoUI.Frame = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height);
-                _oauthInfoUI.Center = View.Center;
-            }
-
-            _toolbar.Frame = new CoreGraphics.CGRect(0, View.Bounds.Height - 50, View.Bounds.Width, 50);
-            _segmentButton.Frame = new CoreGraphics.CGRect(10, _toolbar.Frame.Top + 10, View.Bounds.Width - 20, _toolbar.Frame.Height - 20);
-
-            base.ViewDidLayoutSubviews();
-        }
-
         private void Initialize()
         {
-            // Create a new Map instance to display by default
-            Map myMap = new Map(Basemap.CreateLightGrayCanvas());
+            // Show a map with basemap by default.
+            _myMapView.Map = new Map(Basemap.CreateLightGrayCanvas());
 
-            // Provide used Map to the MapView
-            _myMapView.Map = myMap;
-
-            // Prompt the user for OAuth settings
-            ShowOAuthPropsUI();
+            // Update the authentication settings.
+            UpdateAuthenticationManager();
         }
 
-        private void ShowOAuthPropsUI()
-        {
-            if (_oauthInfoUI != null) { return; }
-
-            // Create a view to show entry controls over the map view
-            var ovBounds = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height); ;
-            _oauthInfoUI = new OAuthPropsDialogOverlay(ovBounds, 0.75f, UIColor.White, _appClientId, _oAuthRedirectUrl);
-
-            // Handle the OnOAuthPropsInfoEntered event to get the info entered by the user
-            _oauthInfoUI.OnOAuthPropsInfoEntered += (s, e) =>
-            {
-                // Store the settings entered and use them to update the AuthenticationManager
-                _appClientId = e.ClientId;
-                _oAuthRedirectUrl = e.RedirectUrl;
-                UpdateAuthenticationManager();
-
-                // Hide the OAuth entry
-                _oauthInfoUI.Hide();
-                _oauthInfoUI = null;
-            };
-
-            // Handle the cancel event when the user closes the dialog without choosing to save
-            _oauthInfoUI.OnCanceled += (s, e) =>
-            {
-                _oauthInfoUI.Hide();
-                _oauthInfoUI = null;
-            };
-
-            // Add the map item info UI view (will display semi-transparent over the map view)
-            View.Add(_oauthInfoUI);
-        }
-
-        private void CreateLayout()
-        {
-            // Configure segmented button control
-            _segmentButton.BackgroundColor = UIColor.White;
-            _segmentButton.InsertSegment("Search Maps", 0, false);
-            _segmentButton.InsertSegment("My Maps", 1, false);
-
-            // Handle the "click" for each segment (new segment is selected)
-            _segmentButton.ValueChanged += SegmentButtonClicked;
-
-            // Add the MapView and segmented button to the page
-            View.AddSubviews(_myMapView, _toolbar, _segmentButton);
-        }
-
-        private void SegmentButtonClicked(object sender, EventArgs e)
-        {
-            // Get the segmented button control that raised the event
-            var buttonControl = sender as UISegmentedControl;
-
-            // Get the selected segment in the control
-            var selectedSegmentId = buttonControl.SelectedSegment;
-
-            // Execute the appropriate action for the control
-            if (selectedSegmentId == 0)
-            {
-                // Show search UI
-                ShowSearchMapUI();
-            }
-            else if (selectedSegmentId == 1)
-            {
-                // Authenticate user on ArcGIS Online, then show their maps
-                GetMyMaps();
-            }
-
-            // Unselect all segments (user might want to click the same control twice)
-            buttonControl.SelectedSegment = -1;
-        }
-
-        private void ShowSearchMapUI()
-        {
-            if (_searchMapsUI != null) { return; }
-
-            // Create a view to show map item info entry controls over the map view
-            var ovBounds = new CoreGraphics.CGRect(0, yPageOffset, View.Bounds.Width, View.Bounds.Height);
-            _searchMapsUI = new SearchMapsDialogOverlay(ovBounds, 0.75f, UIColor.White);
-
-            // Handle the OnSearchMapsTextEntered event to get the info entered by the user
-            _searchMapsUI.OnSearchMapsTextEntered += SearchTextEntered;
-
-            // Handle the cancel event when the user closes the dialog without choosing to search
-            _searchMapsUI.OnCanceled += SearchCanceled;
-
-            // Add the search UI view (will display semi-transparent over the map view)
-            View.Add(_searchMapsUI);
-        }
-
-        private async void GetMyMaps()
-        {
-            // Get web map portal items in the current user's folder
-            IEnumerable<PortalItem> mapItems = null;
-            ArcGISPortal portal;
-
-            // Call a sub that will force the user to log in to ArcGIS Online (if they haven't already)
-            var loggedIn = await EnsureLoggedInAsync();
-            if (!loggedIn) { return; }
-
-            // Connect to the portal (will connect using the provided credentials)
-            portal = await ArcGISPortal.CreateAsync(new Uri(ServerUrl));
-
-            // Get the user's content (items in the root folder and a collection of sub-folders)
-            PortalUserContent myContent = await portal.User.GetContentAsync();
-
-            // Get the web map items in the root folder
-            mapItems = from item in myContent.Items where item.Type == PortalItemType.WebMap select item;
-
-            // Loop through all sub-folders and get web map items, add them to the mapItems collection
-            foreach (PortalFolder folder in myContent.Folders)
-            {
-                IEnumerable<PortalItem> folderItems = await portal.User.GetContentAsync(folder.FolderId);
-                mapItems.Concat(from item in folderItems where item.Type == PortalItemType.WebMap select item);
-            }
-
-            // Show the map results
-            ShowMapList(mapItems);
-        }
-
-        // Handle the SearchTextEntered event from the search input UI
-        // SearchMapsEventArgs contains the search text that was entered
-        private async void SearchTextEntered(object sender, SearchMapsEventArgs e)
+        private async void GetMyMaps_Clicked(object sender, EventArgs e)
         {
             try
             {
-                // Get web map portal items from a keyword search
-                IEnumerable<PortalItem> mapItems = null;
-                ArcGISPortal portal;
+                // For UI popup.
+                _myMapsLastClicked = true;
 
-                // Connect to the portal (anonymously)
-                portal = await ArcGISPortal.CreateAsync(new Uri(ServerUrl));
+                await GetMyMaps();
+            }
+            catch (Exception ex)
+            {
+                UIAlertController alertController = UIAlertController.Create("There was a problem.", ex.ToString(),
+                    UIAlertControllerStyle.Alert);
+                alertController.AddAction(UIAlertAction.Create("Ok", UIAlertActionStyle.Cancel, null));
+                PresentViewController(alertController, true, null);
+            }
+        }
 
-                // Create a query expression that will get public items of type 'web map' with the keyword(s) in the items tags
-                var queryExpression = string.Format("tags:\"{0}\" access:public type: (\"web map\" NOT \"web mapping application\")", e.SearchText);
+        private void SearchMaps_Clicked(object sender, EventArgs e)
+        {
+            // For UI popup.
+            _myMapsLastClicked = false;
 
-                // Create a query parameters object with the expression and a limit of 10 results
+            // Prompt for the query.
+            UIAlertController unionAlert = UIAlertController.Create("Search for maps", "Enter a search term.",
+                UIAlertControllerStyle.Alert);
+            unionAlert.AddTextField(field => { });
+            unionAlert.AddAction(UIAlertAction.Create("Search", UIAlertActionStyle.Default,
+                action => SearchTextEntered(unionAlert.TextFields[0].Text)));
+            unionAlert.AddAction(UIAlertAction.Create("Cancel", UIAlertActionStyle.Cancel, null));
+
+            // Show the alert.
+            PresentViewController(unionAlert, true, null);
+        }
+
+        private async Task GetMyMaps()
+        {
+            // Call a sub that will force the user to log in to ArcGIS Online (if they haven't already).
+            bool loggedIn = await EnsureLoggedInAsync();
+            if (!loggedIn)
+            {
+                return;
+            }
+
+            // Connect to the portal (will connect using the provided credentials).
+            ArcGISPortal portal = await ArcGISPortal.CreateAsync(new Uri(ServerUrl));
+
+            // Get the user's content (items in the root folder and a collection of sub-folders).
+            PortalUserContent myContent = await portal.User.GetContentAsync();
+
+            // Get the web map items in the root folder.
+            IEnumerable<PortalItem> mapItems =
+                from item in myContent.Items where item.Type == PortalItemType.WebMap select item;
+
+            // Loop through all sub-folders and get web map items, add them to the mapItems collection.
+            foreach (PortalFolder folder in myContent.Folders)
+            {
+                IEnumerable<PortalItem> folderItems = await portal.User.GetContentAsync(folder.FolderId);
+                mapItems = mapItems.Concat(
+                    from item in folderItems where item.Type == PortalItemType.WebMap select item);
+            }
+
+            // Show the map results.
+            ShowMapList(mapItems);
+        }
+
+        // Handle the SearchTextEntered event from the search input UI.
+        // SearchMapsEventArgs contains the search text that was entered.
+        private async void SearchTextEntered(string searchText)
+        {
+            try
+            {
+                // Connect to the portal (anonymously).
+                ArcGISPortal portal = await ArcGISPortal.CreateAsync(new Uri(ServerUrl));
+
+                // Create a query expression that will get public items of type 'web map' with the keyword(s) in the items tags.
+                string queryExpression =
+                    $"tags:\"{searchText}\" access:public type: (\"web map\" NOT \"web mapping application\")";
+
+                // Create a query parameters object with the expression and a limit of 10 results.
                 PortalQueryParameters queryParams = new PortalQueryParameters(queryExpression, 10);
 
-                // Search the portal using the query parameters and await the results
+                // Search the portal using the query parameters and await the results.
                 PortalQueryResultSet<PortalItem> findResult = await portal.FindItemsAsync(queryParams);
 
-                // Get the items from the query results
-                mapItems = findResult.Results;
+                // Get the items from the query results.
+                IEnumerable<PortalItem> mapItems = findResult.Results;
 
-                // Show the map results
+                // Show the map results.
                 ShowMapList(mapItems);
             }
             catch (Exception ex)
             {
-                // Report search error
+                // Report search error.
                 UIAlertController alert = UIAlertController.Create("Error", ex.Message, UIAlertControllerStyle.Alert);
                 alert.AddAction(UIAlertAction.Create("OK", UIAlertActionStyle.Default, null));
                 PresentViewController(alert, true, null);
-            }
-            finally
-            {
-                // Get rid of the search input controls
-                _searchMapsUI.Hide();
-                _searchMapsUI = null;
             }
         }
 
         private void ShowMapList(IEnumerable<PortalItem> webmapItems)
         {
-            // Create a new Alert Controller
-            UIAlertController mapListActionSheet = UIAlertController.Create("Web maps", "Choose a map", UIAlertControllerStyle.ActionSheet);
+            // Create a new Alert Controller.
+            UIAlertController mapListActionSheet =
+                UIAlertController.Create("Web maps", "Choose a map", UIAlertControllerStyle.ActionSheet);
 
-            // Add actions to load the available web maps
-            foreach (var item in webmapItems)
+            // Add actions to load the available web maps.
+            foreach (PortalItem item in webmapItems)
             {
-                mapListActionSheet.AddAction(UIAlertAction.Create(item.Title, UIAlertActionStyle.Default, (action) => DisplayMap(item.Url)));
+                mapListActionSheet.AddAction(UIAlertAction.Create(item.Title, UIAlertActionStyle.Default,
+                    async action => await DisplayMap(item.Url)));
             }
 
-            // Add a choice to cancel
-            mapListActionSheet.AddAction(UIAlertAction.Create("Cancel", UIAlertActionStyle.Cancel, (action) => Console.WriteLine("Canceled")));
+            // Add a choice to cancel.
+            mapListActionSheet.AddAction(UIAlertAction.Create("Cancel", UIAlertActionStyle.Cancel,
+                action => Console.WriteLine("Canceled")));
 
-            // Required for iPad - You must specify a source for the Action Sheet since it is displayed as a popover
+            // Required for iPad - You must specify a source for the Action Sheet since it is displayed as a popover.
             UIPopoverPresentationController presentationPopover = mapListActionSheet.PopoverPresentationController;
             if (presentationPopover != null)
             {
-                presentationPopover.SourceView = this.View;
-                presentationPopover.PermittedArrowDirections = UIPopoverArrowDirection.Up;
+                presentationPopover.BarButtonItem = _myMapsLastClicked ? _myMapsButton : _searchButton;
+                presentationPopover.PermittedArrowDirections = UIPopoverArrowDirection.Down;
             }
 
-            // Display the list of maps
-            this.PresentViewController(mapListActionSheet, true, null);
+            // Display the list of maps.
+            PresentViewController(mapListActionSheet, true, null);
         }
 
-        private async void DisplayMap(Uri webMapUri)
+        private async Task DisplayMap(Uri webMapUri)
         {
-            var webMap = new Map(webMapUri);
+            Map webMap = new Map(webMapUri);
             try
             {
                 await webMap.LoadAsync();
             }
             catch (Esri.ArcGISRuntime.ArcGISRuntimeException e)
             {
-                var alert = new UIAlertView("Map Load Error", e.Message, null, "OK", null);
+                UIAlertView alert =
+                    new UIAlertView("Map Load Error", e.Message, (IUIAlertViewDelegate)null, "OK", null);
                 alert.Show();
             }
 
-            // Handle change in the load status (to report load errors)
+            // Handle change in the load status (to report load errors).
             webMap.LoadStatusChanged += WebMapLoadStatusChanged;
 
             _myMapView.Map = webMap;
@@ -312,57 +219,121 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
         private void WebMapLoadStatusChanged(object sender, Esri.ArcGISRuntime.LoadStatusEventArgs e)
         {
-            // Get the current status
-            var status = e.Status;
+            Map map = (Map)sender;
 
-            // Report errors if map failed to load
-            if (status == Esri.ArcGISRuntime.LoadStatus.FailedToLoad)
+            // Report errors if map failed to load.
+            if (e.Status == LoadStatus.Loaded)
             {
-                var map = sender as Map;
-                var err = map.LoadError;
+                // Unsubscribe from event.
+                map.LoadStatusChanged -= WebMapLoadStatusChanged;
+            }
+            else if (e.Status == LoadStatus.FailedToLoad)
+            {
+                // Unsubscribe from event.
+                map.LoadStatusChanged -= WebMapLoadStatusChanged;
+
+                // Show the error
+                Exception err = map.LoadError;
                 if (err != null)
                 {
-                    var alert = new UIAlertView("Map Load Error", err.Message, null, "OK", null);
+                    UIAlertView alert = new UIAlertView("Map Load Error", err.Message, (IUIAlertViewDelegate)null,
+                        "OK", null);
                     alert.Show();
                 }
             }
         }
 
-        private void SearchCanceled(object sender, EventArgs e)
+        public override void ViewDidLoad()
         {
-            // Remove the search input UI
-            _searchMapsUI.Hide();
-            _searchMapsUI = null;
+            base.ViewDidLoad();
+            Initialize();
+        }
+
+        public override void LoadView()
+        {
+            // Create the views.
+            View = new UIView { BackgroundColor = ApplicationTheme.BackgroundColor };
+
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            _searchButton = new UIBarButtonItem();
+            _searchButton.Title = "Search maps";
+
+            _myMapsButton = new UIBarButtonItem();
+            _myMapsButton.Title = "Get my maps";
+
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                _searchButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _myMapsButton
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor)
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _searchButton.Clicked += SearchMaps_Clicked;
+            _myMapsButton.Clicked += GetMyMaps_Clicked;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _searchButton.Clicked -= SearchMaps_Clicked;
+            _myMapsButton.Clicked -= GetMyMaps_Clicked;
         }
 
         #region OAuth helpers
 
         private void UpdateAuthenticationManager()
         {
-            // Register the server information with the AuthenticationManager
+            // Register the server information with the AuthenticationManager.
             ServerInfo portalServerInfo = new ServerInfo
             {
                 ServerUri = new Uri(ServerUrl),
                 OAuthClientInfo = new OAuthClientInfo
                 {
-                    ClientId = _appClientId,
-                    RedirectUri = new Uri(_oAuthRedirectUrl)
+                    ClientId = AppClientId,
+                    RedirectUri = new Uri(OAuthRedirectUrl)
                 },
-                // Specify OAuthAuthorizationCode if you need a refresh token (and have specified a valid client secret)
-                // Otherwise, use OAuthImplicit
+                // Specify OAuthAuthorizationCode if you need a refresh token (and have specified a valid client secret).
+                // Otherwise, use OAuthImplicit.
                 TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
             };
 
-            // Get a reference to the (singleton) AuthenticationManager for the app
+            // Get a reference to the (singleton) AuthenticationManager for the app.
             AuthenticationManager thisAuthenticationManager = AuthenticationManager.Current;
 
-            // Register the server information
+            // Register the server information.
             thisAuthenticationManager.RegisterServer(portalServerInfo);
 
-            // Assign the method that AuthenticationManager will call to challenge for secured resources
+            // Assign the method that AuthenticationManager will call to challenge for secured resources.
             thisAuthenticationManager.ChallengeHandler = new ChallengeHandler(CreateCredentialAsync);
 
-            // Set the OAuth authorization handler to this class (Implements IOAuthAuthorize interface)
+            // Set the OAuth authorization handler to this class (Implements IOAuthAuthorize interface).
             thisAuthenticationManager.OAuthAuthorizeHandler = this;
         }
 
@@ -372,483 +343,151 @@ namespace ArcGISRuntimeXamarin.Samples.SearchPortalMaps
 
             try
             {
-                // Create a challenge request for portal credentials (OAuth credential request for arcgis.com)
-                CredentialRequestInfo challengeRequest = new CredentialRequestInfo();
-
-                // Use the OAuth implicit grant flow
-                challengeRequest.GenerateTokenOptions = new GenerateTokenOptions
+                // Create a challenge request for portal credentials (OAuth credential request for arcgis.com).
+                CredentialRequestInfo challengeRequest = new CredentialRequestInfo
                 {
-                    TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                    // Use the OAuth implicit grant flow.
+                    GenerateTokenOptions = new GenerateTokenOptions
+                    {
+                        TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                    },
+
+                    // Indicate the URL (portal) to authenticate with (ArcGIS Online).
+                    ServiceUri = new Uri(ServerUrl)
                 };
 
-                // Indicate the url (portal) to authenticate with (ArcGIS Online)
-                challengeRequest.ServiceUri = new Uri(ServerUrl);
-
-                // Call GetCredentialAsync on the AuthenticationManager to invoke the challenge handler
-                var cred = await AuthenticationManager.Current.GetCredentialAsync(challengeRequest, false);
+                // Call GetCredentialAsync on the AuthenticationManager to invoke the challenge handler.
+                Credential cred = await AuthenticationManager.Current.GetCredentialAsync(challengeRequest, false);
                 loggedIn = cred != null;
             }
-            catch (System.OperationCanceledException)
+            catch (OperationCanceledException)
             {
-                // Login was canceled
-                // .. ignore, user can still search public maps without logging in
+                // Login was canceled.
+                // .. ignore, user can still search public maps without logging in.
             }
             catch (Exception ex)
             {
-                // Login failure
-                var alert = new UIAlertView("Login Error", ex.Message, null, "OK", null);
+                // Login failure.
+                UIAlertView alert = new UIAlertView("Login Error", ex.Message, (IUIAlertViewDelegate)null, "OK", null);
                 alert.Show();
             }
 
             return loggedIn;
         }
 
-        // ChallengeHandler function for AuthenticationManager, called whenever access to a secured resource is attempted
+        // ChallengeHandler function for AuthenticationManager, called whenever access to a secured resource is attempted.
         private async Task<Credential> CreateCredentialAsync(CredentialRequestInfo info)
         {
             OAuthTokenCredential credential = null;
 
             try
             {
-                // Create generate token options if necessary
+                // Create generate token options if necessary.
                 if (info.GenerateTokenOptions == null)
                 {
                     info.GenerateTokenOptions = new GenerateTokenOptions();
                 }
 
-                // AuthenticationManager will handle challenging the user for credentials
+                // AuthenticationManager will handle challenging the user for credentials.
                 credential = await AuthenticationManager.Current.GenerateCredentialAsync
-                    (
-                            info.ServiceUri,
-                            info.GenerateTokenOptions
-                    ) as OAuthTokenCredential;
+                (
+                    info.ServiceUri,
+                    info.GenerateTokenOptions
+                ) as OAuthTokenCredential;
             }
-            catch (TaskCanceledException) { return credential; }
+            catch (TaskCanceledException)
+            {
+                return credential;
+            }
             catch (Exception)
             {
-                // Exception will be reported in calling function
+                // Exception will be reported in calling function.
                 throw;
             }
 
             return credential;
         }
 
-        // IOAuthAuthorizeHandler.AuthorizeAsync implementation
+        // IOAuthAuthorizeHandler.AuthorizeAsync implementation.
         public Task<IDictionary<string, string>> AuthorizeAsync(Uri serviceUri, Uri authorizeUri, Uri callbackUri)
         {
-            // If the TaskCompletionSource is not null, authorization may already be in progress and should be cancelled
-            if (_taskCompletionSource != null)
-            {
-                // Try to cancel any existing authentication task
-                _taskCompletionSource.TrySetCanceled();
-            }
+            // If the TaskCompletionSource is not null, authorization may already be in progress and should be canceled.
+            // Try to cancel any existing authentication process.
+            _taskCompletionSource?.TrySetCanceled();
 
-            // Create a task completion source
+            // Create a task completion source.
             _taskCompletionSource = new TaskCompletionSource<IDictionary<string, string>>();
 
-            // Create a new Xamarin.Auth.OAuth2Authenticator using the information passed in
-            Xamarin.Auth.OAuth2Authenticator auth = new OAuth2Authenticator(
-                clientId: _appClientId,
+            // Create a new Xamarin.Auth.OAuth2Authenticator using the information passed in.
+            _auth = new OAuth2Authenticator(
+                clientId: AppClientId,
                 scope: "",
                 authorizeUrl: authorizeUri,
-                redirectUrl: callbackUri)
+                redirectUrl: new Uri(OAuthRedirectUrl))
             {
-                ShowErrors = false
+                ShowErrors = false,
+                // Allow the user to cancel the OAuth attempt.
+                AllowCancel = true
             };
 
-            // Allow the user to cancel the OAuth attempt
-            auth.AllowCancel = true;
-
-            // Define a handler for the OAuth2Authenticator.Completed event
-            auth.Completed += (sender, authArgs) =>
+            // Define a handler for the OAuth2Authenticator.Completed event.
+            _auth.Completed += (o, authArgs) =>
             {
                 try
                 {
-                    // Dismiss the OAuth UI when complete
-                    this.DismissViewController(true, null);
+                    // Dismiss the OAuth UI when complete.
+                    InvokeOnMainThread(() => { UIApplication.SharedApplication.KeyWindow.RootViewController.DismissViewController(true, null); });
 
-                    // Throw an exception if the user could not be authenticated
-                    if (!authArgs.IsAuthenticated)
+                    // Check if the user is authenticated.
+                    if (authArgs.IsAuthenticated)
+                    {
+                        // If authorization was successful, get the user's account.
+                        Xamarin.Auth.Account authenticatedAccount = authArgs.Account;
+
+                        // Set the result (Credential) for the TaskCompletionSource.
+                        _taskCompletionSource.SetResult(authenticatedAccount.Properties);
+                    }
+                    else
                     {
                         throw new Exception("Unable to authenticate user.");
                     }
-
-                    // If authorization was successful, get the user's account
-                    Xamarin.Auth.Account authenticatedAccount = authArgs.Account;
-
-                    // Set the result (Credential) for the TaskCompletionSource
-                    _taskCompletionSource.SetResult(authenticatedAccount.Properties);
                 }
                 catch (Exception ex)
                 {
-                    // If authentication failed, set the exception on the TaskCompletionSource
+                    // If authentication failed, set the exception on the TaskCompletionSource.
                     _taskCompletionSource.TrySetException(ex);
 
-                    // Cancel authentication
-                    auth.OnCancelled();
+                    // Cancel authentication.
+                    _auth.OnCancelled();
                 }
             };
 
-            // If an error was encountered when authenticating, set the exception on the TaskCompletionSource
-            auth.Error += (sndr, errArgs) =>
+            // If an error was encountered when authenticating, set the exception on the TaskCompletionSource.
+            _auth.Error += (o, errArgs) =>
             {
+                // If the user cancels, the Error event is raised but there is no exception ... best to check first.
                 if (errArgs.Exception != null)
                 {
                     _taskCompletionSource.TrySetException(errArgs.Exception);
                 }
                 else
                 {
-                    _taskCompletionSource.TrySetException(new Exception(errArgs.Message));
+                    // Login canceled: dismiss the OAuth login.
+                    _taskCompletionSource?.TrySetCanceled();
                 }
 
-                // Cancel authentication
-                auth.OnCancelled();
+                // Cancel authentication.
+                _auth.OnCancelled();
+                _auth = null;
             };
 
-            // Present the OAuth UI (on the app's UI thread) so the user can enter user name and password
-            InvokeOnMainThread(() =>
-            {
-                this.PresentViewController(auth.GetUI(), true, null);
-            });
+            // Present the OAuth UI (on the app's UI thread) so the user can enter user name and password.
+            InvokeOnMainThread(() => { UIApplication.SharedApplication.KeyWindow.RootViewController.PresentViewController(_auth.GetUI(), true, null); });
 
-            // Return completion source task so the caller can await completion
+            // Return completion source task so the caller can await completion.
             return _taskCompletionSource.Task;
-        }
-
-        private static IDictionary<string, string> DecodeParameters(Uri uri)
-        {
-            // Create a dictionary of key value pairs returned in an OAuth authorization response URI query string
-            var answer = string.Empty;
-
-            // Get the values from the URI fragment or query string
-            if (!string.IsNullOrEmpty(uri.Fragment))
-            {
-                answer = uri.Fragment.Substring(1);
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(uri.Query))
-                {
-                    answer = uri.Query.Substring(1);
-                }
-            }
-
-            // Parse parameters into key / value pairs
-            var keyValueDictionary = new Dictionary<string, string>();
-            var keysAndValues = answer.Split(new[] { '&' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var kvString in keysAndValues)
-            {
-                var pair = kvString.Split('=');
-                string key = pair[0];
-                string value = string.Empty;
-                if (key.Length > 1)
-                {
-                    value = Uri.UnescapeDataString(pair[1]);
-                }
-
-                keyValueDictionary.Add(key, value);
-            }
-
-            // Return the dictionary of string keys/values
-            return keyValueDictionary;
         }
 
         #endregion OAuth helpers
     }
-
-    #region UI for entering OAuth configuration settings
-
-    // View containing "configure OAuth" controls (client id and redirect url inputs with save/cancel buttons)
-    public class OAuthPropsDialogOverlay : UIView
-    {
-        // Event to provide information the user entered when the user dismisses the view
-        public event EventHandler<OAuthPropsSavedEventArgs> OnOAuthPropsInfoEntered;
-
-        // Event to report that the entry was canceled
-        public event EventHandler OnCanceled;
-
-        // Store the input controls so the values can be read
-        private UITextField _clientIdTextField;
-
-        private UITextField _redirectUrlTextField;
-
-        public OAuthPropsDialogOverlay(CoreGraphics.CGRect frame, nfloat transparency, UIColor color, string clientId, string redirectUrl) : base(frame)
-        {
-            // Create a semi-transparent overlay with the specified background color
-            BackgroundColor = color;
-            Alpha = transparency;
-
-            // Set size and spacing for controls
-            nfloat controlHeight = 25;
-            nfloat rowSpace = 11;
-            nfloat lessRowSpace = 4;
-            nfloat buttonSpace = 15;
-            nfloat textViewWidth = Frame.Width - 60;
-            nfloat buttonWidth = 60;
-
-            // Get the total height and width of the control set (four rows of controls, three sets of space)
-            nfloat totalHeight = (6 * controlHeight) + (5 * rowSpace);
-            nfloat totalWidth = textViewWidth;
-
-            // Find the center x and y of the view
-            nfloat centerX = Frame.Width / 2;
-            nfloat centerY = Frame.Height / 2;
-
-            // Find the start x and y for the control layout
-            nfloat controlX = centerX - (totalWidth / 2);
-            nfloat controlY = centerY - (totalHeight / 2);
-
-            // Label for inputs
-            var description = new UILabel(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            description.Text = "OAuth Settings";
-            description.TextColor = UIColor.Blue;
-
-            // Adjust the Y position for the next control
-            controlY = controlY + controlHeight + rowSpace;
-
-            // Client ID text input and label
-            var clientIdLabel = new UILabel(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            clientIdLabel.Text = "Client ID";
-
-            controlY = controlY + controlHeight + lessRowSpace;
-
-            _clientIdTextField = new UITextField(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            _clientIdTextField.Placeholder = "Client ID";
-            _clientIdTextField.Text = clientId;
-            _clientIdTextField.AutocapitalizationType = UITextAutocapitalizationType.None;
-            _clientIdTextField.BackgroundColor = UIColor.LightGray;
-            // Allow pressing 'return' to dismiss the keyboard
-            _clientIdTextField.ShouldReturn += (textField) => { textField.ResignFirstResponder(); return true; };
-
-            // Adjust the Y position for the next control
-            controlY = controlY + controlHeight + rowSpace;
-
-            // Redirect Url text input and label
-            var redirectLabel = new UILabel(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            redirectLabel.Text = "Redirect URL";
-
-            controlY = controlY + controlHeight + lessRowSpace;
-
-            _redirectUrlTextField = new UITextField(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            _redirectUrlTextField.Placeholder = "Redirect URI";
-            _redirectUrlTextField.Text = redirectUrl;
-            _redirectUrlTextField.AutocapitalizationType = UITextAutocapitalizationType.None;
-            _redirectUrlTextField.BackgroundColor = UIColor.LightGray;
-            // Allow pressing 'return' to dismiss the keyboard
-            _redirectUrlTextField.ShouldReturn += (textField) => { textField.ResignFirstResponder(); return true; };
-
-            // Adjust the Y position for the next control
-            controlY = controlY + controlHeight + rowSpace;
-
-            // Button to save the values
-            UIButton saveButton = new UIButton(new CoreGraphics.CGRect(controlX, controlY, buttonWidth, controlHeight));
-            saveButton.SetTitle("Save", UIControlState.Normal);
-            saveButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            saveButton.TouchUpInside += SaveButtonClick;
-
-            // Adjust the X position for the next control
-            controlX = controlX + buttonWidth + buttonSpace;
-
-            // Button to cancel the save
-            UIButton cancelButton = new UIButton(new CoreGraphics.CGRect(controlX, controlY, buttonWidth, controlHeight));
-            cancelButton.SetTitle("Cancel", UIControlState.Normal);
-            cancelButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            cancelButton.TouchUpInside += (s, e) => { OnCanceled.Invoke(this, null); };
-
-            // Add the controls
-            AddSubviews(description, clientIdLabel, _clientIdTextField, redirectLabel, _redirectUrlTextField, saveButton, cancelButton);
-        }
-
-        // Animate increasing transparency to completely hide the view, then remove it
-        public void Hide()
-        {
-            // Action to make the view transparent
-            Action makeTransparentAction = () => Alpha = 0;
-
-            // Action to remove the view
-            Action removeViewAction = () => RemoveFromSuperview();
-
-            // Time to complete the animation (seconds)
-            double secondsToComplete = 0.75;
-
-            // Animate transparency to zero, then remove the view
-            Animate(secondsToComplete, makeTransparentAction, removeViewAction);
-        }
-
-        private void SaveButtonClick(object sender, EventArgs e)
-        {
-            // Get the values entered in the text fields
-            var clientId = _clientIdTextField.Text.Trim();
-            var redirectUrl = _redirectUrlTextField.Text.Trim();
-
-            // Make sure all required info was entered
-            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUrl))
-            {
-                var alert = new UIAlertView("Error", "Please enter a client ID and redirect URL for OAuth authentication.", null, "OK", null);
-                alert.Show();
-                return;
-            }
-
-            // Fire the OnOAuthPropsInfoEntered event and provide the map item values
-            if (OnOAuthPropsInfoEntered != null)
-            {
-                // Create a new OAuthPropsSavedEventArgs to contain the user's values
-                var oauthSaveEventArgs = new OAuthPropsSavedEventArgs(clientId, redirectUrl);
-
-                // Raise the event
-                OnOAuthPropsInfoEntered(sender, oauthSaveEventArgs);
-            }
-        }
-    }
-
-    // Custom EventArgs implementation to hold OAuth information (client Id and redirect Url)
-    public class OAuthPropsSavedEventArgs : EventArgs
-    {
-        // Client ID property
-        public string ClientId { get; set; }
-
-        // Redirect Url property
-        public string RedirectUrl { get; set; }
-
-        // Store map item values passed into the constructor
-        public OAuthPropsSavedEventArgs(string clientId, string redirectUrl)
-        {
-            ClientId = clientId;
-            RedirectUrl = redirectUrl;
-        }
-    }
-
-    #endregion UI for entering OAuth configuration settings
-
-    #region UI for entering web map search text
-
-    // View containing "search map" controls (search text input and search/cancel buttons)
-    public class SearchMapsDialogOverlay : UIView
-    {
-        // Event to provide information the user entered when the user dismisses the view
-        public event EventHandler<SearchMapsEventArgs> OnSearchMapsTextEntered;
-
-        // Event to report that the search was canceled
-        public event EventHandler OnCanceled;
-
-        // Store the input control so the value can be read
-        private UITextField _searchTextField;
-
-        public SearchMapsDialogOverlay(CoreGraphics.CGRect frame, nfloat transparency, UIColor color) : base(frame)
-        {
-            // Create a semi-transparent overlay with the specified background color
-            BackgroundColor = color;
-            Alpha = transparency;
-
-            // Set size and spacing for controls
-            nfloat controlHeight = 25;
-            nfloat rowSpace = 11;
-            nfloat buttonSpace = 15;
-            nfloat textViewWidth = Frame.Width - 60;
-            nfloat buttonWidth = 60;
-
-            // Get the total height and width of the control set (three rows of controls, one set of space)
-            nfloat totalHeight = (3 * controlHeight) + rowSpace;
-            nfloat totalWidth = textViewWidth;
-
-            // Find the center x and y of the view
-            nfloat centerX = Frame.Width / 2;
-            nfloat centerY = Frame.Height / 2;
-
-            // Find the start x and y for the control layout
-            nfloat controlX = centerX - (totalWidth / 2);
-            nfloat controlY = centerY - (totalHeight / 2);
-
-            // Label for inputs
-            var description = new UILabel(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            description.Text = "Search web maps";
-            description.TextColor = UIColor.Blue;
-
-            // Adjust the Y position for the next control
-            controlY = controlY + controlHeight + rowSpace;
-
-            // Title text input
-            _searchTextField = new UITextField(new CoreGraphics.CGRect(controlX, controlY, textViewWidth, controlHeight));
-            _searchTextField.Placeholder = "Search text";
-            _searchTextField.AutocapitalizationType = UITextAutocapitalizationType.None;
-            _searchTextField.BackgroundColor = UIColor.LightGray;
-            // Allow pressing 'return' to dismiss the keyboard
-            _searchTextField.ShouldReturn += (textField) => { textField.ResignFirstResponder(); return true; };
-
-            // Hide the keyboard when "Enter" is clicked
-            _searchTextField.ShouldReturn += (input) =>
-            {
-                input.ResignFirstResponder();
-                return true;
-            };
-
-            // Adjust the Y position for the next control
-            controlY = controlY + controlHeight + rowSpace;
-
-            // Button to pass the text to the search
-            UIButton saveButton = new UIButton(new CoreGraphics.CGRect(controlX, controlY, buttonWidth, controlHeight));
-            saveButton.SetTitle("Search", UIControlState.Normal);
-            saveButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            saveButton.TouchUpInside += SearchButtonClick;
-
-            // Adjust the X position for the next control (space between buttons)
-            controlX = controlX + buttonWidth + buttonSpace;
-
-            // Button to cancel the search
-            UIButton cancelButton = new UIButton(new CoreGraphics.CGRect(controlX, controlY, buttonWidth, controlHeight));
-            cancelButton.SetTitle("Cancel", UIControlState.Normal);
-            cancelButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            cancelButton.TouchUpInside += (s, e) => { OnCanceled.Invoke(this, null); };
-
-            // Add the controls
-            AddSubviews(description, _searchTextField, saveButton, cancelButton);
-        }
-
-        // Animate increasing transparency to completely hide the view, then remove it
-        public void Hide()
-        {
-            // Action to make the view transparent
-            Action makeTransparentAction = () => Alpha = 0;
-
-            // Action to remove the view
-            Action removeViewAction = () => RemoveFromSuperview();
-
-            // Time to complete the animation (seconds)
-            double secondsToComplete = 0.75;
-
-            // Animate transparency to zero, then remove the view
-            Animate(secondsToComplete, makeTransparentAction, removeViewAction);
-        }
-
-        private void SearchButtonClick(object sender, EventArgs e)
-        {
-            // Get the search text entered
-            var searchText = _searchTextField.Text.Trim();
-
-            // Fire the OnMapInfoEntered event and provide the map item values
-            if (OnSearchMapsTextEntered != null)
-            {
-                // Create a new MapSavedEventArgs to contain the user's values
-                var mapSaveEventArgs = new SearchMapsEventArgs(searchText);
-
-                // Raise the event
-                OnSearchMapsTextEntered(sender, mapSaveEventArgs);
-            }
-        }
-    }
-
-    // Custom EventArgs implementation to hold web map search text
-    public class SearchMapsEventArgs : EventArgs
-    {
-        // Search text property
-        public string SearchText { get; set; }
-
-        // Store map item values passed into the constructor
-        public SearchMapsEventArgs(string searchText)
-        {
-            SearchText = searchText;
-        }
-    }
-
-    #endregion UI for entering web map search text
 }

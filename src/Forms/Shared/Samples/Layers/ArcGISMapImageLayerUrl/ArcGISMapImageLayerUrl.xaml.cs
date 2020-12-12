@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,15 +11,19 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISMapImageLayerUrl
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS map image layer",
+        category: "Layers",
+        description: "Add an ArcGIS Map Image Layer from a URL to a map.",
+        instructions: "",
+        tags: new[] { "ArcGIS dynamic map service layer", "ArcGISMapImageLayer", "layers" })]
     public partial class ArcGISMapImageLayerUrl : ContentPage
     {
         public ArcGISMapImageLayerUrl()
         {
             InitializeComponent();
-
-            Title = "ArcGIS map image layer (URL)";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -31,7 +35,7 @@ namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
             Map myMap = new Map();
 
             // Create uri to the map image layer
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer");
 
             // Create new image layer from the url

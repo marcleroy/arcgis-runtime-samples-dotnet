@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,16 +12,20 @@ using Esri.ArcGISRuntime.Mapping;
 using System;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerUrl
+namespace ArcGISRuntime.Samples.FeatureLayerUrl
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer (feature service)",
+        category: "Layers",
+        description: "Show features from an online feature service.",
+        instructions: "Run the sample and view the feature service as an operational layer on top of the basemap. Zoom and pan around the map to see the features in greater detail.",
+        tags: new[] { "feature table", "layer", "layers", "service" })]
     public partial class FeatureLayerUrl : ContentPage
     {
         public FeatureLayerUrl()
         {
             InitializeComponent ();
-
-            Title = "Feature layer (feature service)";
-
+            
             // Create the UI, setup the control references and execute initialization 
             Initialize();
         }
@@ -37,7 +41,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerUrl
             myMap.InitialViewpoint = new Viewpoint(initialLocation, 300000);
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                 "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/9");
 
             // Create new FeatureLayer from service uri and

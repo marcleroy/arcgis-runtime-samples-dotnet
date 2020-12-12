@@ -1,97 +1,117 @@
-﻿using System;
+﻿// Copyright 2018 Esri.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
+// language governing permissions and limitations under the License.
+
+using ArcGISRuntime.Samples.Managers;
+using ArcGISRuntime.Samples.Shared.Models;
+using Esri.ArcGISRuntime.Security;
+using Foundation;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UIKit;
-using ArcGISRuntimeXamarin.Managers;
-using ArcGISRuntimeXamarin.Models;
-using Foundation;
 
-namespace ArcGISRuntimeXamarin
+namespace ArcGISRuntime
 {
     public class SamplesViewController : UITableViewController
     {
-        TreeItem category;
+        private readonly SearchableTreeNode _category;
 
-        public SamplesViewController(TreeItem category)
+        public SamplesViewController(SearchableTreeNode category)
         {
-            this.category = category;
+            _category = category;
         }
 
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
 
-            this.Title = "Samples";
+            Title = _category.Name;
+            NavigationController.NavigationBar.PrefersLargeTitles = false;
 
-            List<Object> listSubCategoryItems = new List<Object>();
-            for (int i = 0; i < category.Items.Count; i++)
-            {
-                listSubCategoryItems.Add((category.Items[i] as TreeItem).Items);
-            }
+            List<object> listSampleItems = _category.Items;
 
-            List<Object> listSampleItems = new List<Object>();
-            foreach (List<Object> subCategoryItem in listSubCategoryItems)
-            {
-                foreach (var sample in subCategoryItem)
-                {
-                    listSampleItems.Add(sample);
-                }
-            }
+            TableView.Source = new SamplesDataSource(this, listSampleItems);
 
-            this.TableView.Source = new SamplesDataSource(this, listSampleItems);
-
-            this.TableView.ReloadData();
+            TableView.ReloadData();
         }
 
-        public class SamplesDataSource : UITableViewSource
+        public override void ViewWillDisappear(bool animated)
         {
-            private UITableViewController controller;
-            private List<object> data;
+            base.ViewWillDisappear(animated);
+            NavigationController.NavigationBar.PrefersLargeTitles = false;
+        }
 
-            public SamplesDataSource(UITableViewController controller, List<Object> data)
+        private class SamplesDataSource : UITableViewSource
+        {
+            private readonly UITableViewController _controller;
+            private LoadingOverlay _loadPopup;
+            private readonly List<SampleInfo> _data;
+            private SampleInfo _sample;
+
+            public SamplesDataSource(UITableViewController controller, IEnumerable<object> data)
             {
-                this.data = data;
-                this.controller = controller;
+                _data = data.OfType<SampleInfo>().ToList();
+                _controller = controller;
             }
 
             public override UITableViewCell GetCell(UITableView tableView, NSIndexPath indexPath)
             {
-                var cell = new UITableViewCell();
-                var item = data[indexPath.Row];
-                cell.TextLabel.Text = (item as SampleModel).Name;
+                var cell = tableView.DequeueReusableCell("sample") ?? new UITableViewCell(UITableViewCellStyle.Subtitle, "sample");
+                SampleInfo item = _data[indexPath.Row];
+                cell.TextLabel.Text = item.SampleName;
+                cell.DetailTextLabel.Text = item.Description;
+                cell.DetailTextLabel.TextColor = UIColor.Gray;
+                cell.Accessory = UITableViewCellAccessory.DisclosureIndicator;
                 return cell;
             }
 
             public override nint RowsInSection(UITableView tableview, nint section)
             {
-                return data.Count;
+                return _data.Count;
             }
 
             public override async void RowSelected(UITableView tableView, NSIndexPath indexPath)
             {
                 try
                 {
-                    var item = data[indexPath.Row];
-                    var sampleName = (item as SampleModel).SampleName;
-                    var sampleNamespace = (item as SampleModel).SampleNamespace;
-
-                    //If Offline data is required for the sample to work download it 
-                    if ((item as SampleModel).RequiresOfflineData)
-                    {
-                        foreach (string id in ((item as SampleModel).DataItemIds))
-                        {
-                            //TODO - Add splash screen/progress bar
-                            await DataManager.GetData(id, sampleName);
-                        }
-                    }
-
-                    Type t = Type.GetType(sampleNamespace + "." + sampleName);
-                    UIViewController vc = Activator.CreateInstance(t) as UIViewController;
-
                     // Call a function to clear existing credentials
                     ClearCredentials();
 
-                    controller.NavigationController.PushViewController(vc, true);
+                    _sample = _data[indexPath.Row];
+
+                    if (_sample.OfflineDataItems != null)
+                    {
+                        // Create a cancellation token source.
+                        var cancellationTokenSource = new CancellationTokenSource();
+
+                        // Show progress overlay
+                        var bounds = UIScreen.MainScreen.Bounds;
+
+                        _loadPopup = new LoadingOverlay(bounds, cancellationTokenSource);
+                        _controller.ParentViewController.View.Add(_loadPopup);
+
+                        // Ensure data present
+                        await DataManager.EnsureSampleDataPresent(_sample, cancellationTokenSource.Token);
+
+                        // Hide progress overlay
+                        _loadPopup.Hide();
+                    }
+
+                    var control = (UIViewController)SampleManager.Current.SampleToControl(_sample);
+                    control.NavigationItem.RightBarButtonItem = new UIBarButtonItem(UIImage.FromBundle("InfoIcon"), UIBarButtonItemStyle.Plain, ViewSampleReadme);
+                    _controller.NavigationController.PushViewController(control, true);
+                }
+                catch (OperationCanceledException)
+                {
+                    _loadPopup.Hide();
+                    _controller.TableView.DeselectRow(indexPath, true);
                 }
                 catch (Exception ex)
                 {
@@ -99,17 +119,20 @@ namespace ArcGISRuntimeXamarin
                 }
             }
 
-            private void ClearCredentials()
+            private void ViewSampleReadme(object sender, EventArgs e)
+            {
+                var switcher = new UISegmentedControl(new string[] { "About", "Source code" }) { SelectedSegment = 0 };
+                var control = new SampleInfoViewController(_sample, switcher);
+                control.NavigationItem.RightBarButtonItem = new UIBarButtonItem() { CustomView = switcher };
+                _controller.NavigationController.PushViewController(control, true);
+            }
+
+            private static void ClearCredentials()
             {
                 // Clear credentials (if any) from previous sample runs
-                var creds = Esri.ArcGISRuntime.Security.AuthenticationManager.Current.Credentials;
-                for (var i = creds.Count() - 1; i >= 0; i--)
+                foreach (Credential cred in AuthenticationManager.Current.Credentials)
                 {
-                    var c = creds.ElementAtOrDefault(i);
-                    if (c != null)
-                    {
-                        Esri.ArcGISRuntime.Security.AuthenticationManager.Current.RemoveCredential(c);
-                    }
+                    AuthenticationManager.Current.RemoveCredential(cred);
                 }
             }
         }

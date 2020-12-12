@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -13,15 +13,16 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
+namespace ArcGISRuntime.Samples.ChangeFeatureLayerRenderer
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Change feature layer renderer",
+        category: "Layers",
+        description: "Change the appearance of a feature layer with a renderer.",
+        instructions: "Use the buttons to change the renderer on the feature layer. The original renderer displays orange circles, the diameters of which are proportional to carbon storage of each tree. When the blue renderer in this sample is applied, it displays the location of the trees simply as blue points.",
+        tags: new[] { "feature layer", "renderer", "visualization" })]
     public partial class ChangeFeatureLayerRenderer : ContentPage
     {
         //Create and hold reference to the feature layer
@@ -31,13 +32,11 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
         {
             InitializeComponent ();
 
-            Title = "Change feature layer renderer";
-
             //setup the control references and execute initialization 
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Create new Map with basemap
             Map myMap = new Map(Basemap.CreateTopographic());
@@ -54,7 +53,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
             MyMapView.Map = myMap;
 
             // Create uri to the used feature service
-            var serviceUri = new Uri(
+            Uri serviceUri = new Uri(
                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/PoolPermits/FeatureServer/0");
 
             // Initialize feature table using a url to feature server url
@@ -62,16 +61,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeFeatureLayerRenderer
 
             // Initialize a new feature layer based on the feature table
             _featureLayer = new FeatureLayer(featureTable);
-
-            // Make sure that the feature layer gets loaded
-            await _featureLayer.LoadAsync();
-
-            // Check for the load status. If the layer is loaded then add it to map
-            if (_featureLayer.LoadStatus == Esri.ArcGISRuntime.LoadStatus.Loaded)
-            {
-                //add the feature layer to the map
-                myMap.OperationalLayers.Add(_featureLayer);
-            }
+            myMap.OperationalLayers.Add(_featureLayer);
         }
 
         private void OnOverrideButtonClicked(object sender, EventArgs e)

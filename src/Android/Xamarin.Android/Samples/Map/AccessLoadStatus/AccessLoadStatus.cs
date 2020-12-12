@@ -14,13 +14,19 @@ using Esri.ArcGISRuntime;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 
-namespace ArcGISRuntimeXamarin.Samples.AccessLoadStatus
+namespace ArcGISRuntime.Samples.AccessLoadStatus
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Access load status",
+        category: "Map",
+        description: "Determine the map's load status which can be: `NotLoaded`, `FailedToLoad`, `Loading`, `Loaded`.",
+        instructions: "The load status of the map will be displayed as the sample loads.",
+        tags: new[] { "LoadStatus", "Loadable pattern", "Map" })]
     public class AccessLoadStatus : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Control to show the Map's load status
         private TextView _loadStatusTextView;
@@ -54,22 +60,25 @@ namespace ArcGISRuntimeXamarin.Samples.AccessLoadStatus
             RunOnUiThread(() =>
             {
                 // Update the load status information
-                _loadStatusTextView.Text = string.Format(
-                    "Map's load status : {0}", 
-                    e.Status.ToString());
+                _loadStatusTextView.Text = $"Map's load status : {e.Status}";
             });
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create control to show the maps' loading status
-            _loadStatusTextView = new TextView(this);
+            _loadStatusTextView = new TextView(this)
+            {
+                TextSize = 20
+            };
             layout.AddView(_loadStatusTextView);
 
+
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

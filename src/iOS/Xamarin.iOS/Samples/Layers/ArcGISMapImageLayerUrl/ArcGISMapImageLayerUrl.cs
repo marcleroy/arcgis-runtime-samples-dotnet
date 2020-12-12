@@ -7,68 +7,74 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
 // language governing permissions and limitations under the License.
 
+using System;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ArcGISMapImageLayerUrl
+namespace ArcGISRuntime.Samples.ArcGISMapImageLayerUrl
 {
     [Register("ArcGISMapImageLayerUrl")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "ArcGIS map image layer",
+        category: "Layers",
+        description: "Add an ArcGIS Map Image Layer from a URL to a map.",
+        instructions: "",
+        tags: new[] { "ArcGIS dynamic map service layer", "ArcGISMapImageLayer", "layers" })]
     public class ArcGISMapImageLayerUrl : UIViewController
     {
-        // Constant holding offset where the MapView control should start
-        private const int yPageOffset = 60;
-
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
 
         public ArcGISMapImageLayerUrl()
         {
             Title = "ArcGIS map image layer (URL)";
         }
 
+        private void Initialize()
+        {
+            // Create new Map.
+            Map map = new Map();
+
+            // Create URL to the map image layer.
+            Uri serviceUri = new Uri("https://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer");
+
+            // Create new image layer from the URL.
+            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(serviceUri);
+
+            // Add created layer to the basemaps collection.
+            map.Basemap.BaseLayers.Add(imageLayer);
+
+            // Assign the map to the MapView.
+            _myMapView.Map = map;
+        }
+
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
-
-            // Create the UI, setup the control references and execute initialization 
-            CreateLayout();
             Initialize();
         }
 
-        public override void ViewDidLayoutSubviews()
+        public override void LoadView()
         {
-            // Setup the visual frame for the MapView
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            base.ViewDidLayoutSubviews();
-        }
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-        private void Initialize()
-        {
-            // Create new Map
-            Map myMap = new Map();
-
-            // Create uri to the map image layer
-            var serviceUri = new Uri(
-               "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer");
-
-            // Create new image layer from the url
-            ArcGISMapImageLayer imageLayer = new ArcGISMapImageLayer(serviceUri);
-
-            // Add created layer to the basemaps collection
-            myMap.Basemap.BaseLayers.Add(imageLayer);
-
-            // Assign the map to the MapView
-            _myMapView.Map = myMap;
-        }
-
-        private void CreateLayout()
-        {
-            // Add MapView to the page
+            // Add the views.
             View.AddSubviews(_myMapView);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(View.BottomAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor)
+            });
         }
     }
 }

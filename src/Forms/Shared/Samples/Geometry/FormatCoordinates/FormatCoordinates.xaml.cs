@@ -1,4 +1,4 @@
-﻿// Copyright 2018 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,23 +7,22 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using System;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI;
+using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
-
 using Colors = System.Drawing.Color;
 
-#endif
-
-namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
+namespace ArcGISRuntime.Samples.FormatCoordinates
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Format coordinates",
+        category: "Geometry",
+        description: "Format coordinates in a variety of common notations.",
+        instructions: "Tap on the map to see a callout with the clicked location's coordinate formatted in 4 different ways. You can also put a coordinate string in any of these formats in the text field. Hit Enter and the coordinate string will be parsed to a map location which the callout will move to.",
+        tags: new[] { "USNG", "UTM", "convert", "coordinate", "decimal degrees", "degree minutes seconds", "format", "latitude", "longitude" })]
     public partial class FormatCoordinates : ContentPage
     {
         // Hold a reference to the most recently updated field
@@ -32,8 +31,6 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
         public FormatCoordinates()
         {
             InitializeComponent();
-
-            Title = "Format coordinates";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -72,7 +69,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             _selectedEntry = (Entry)sender;
         }
 
-        private void UpdateUIFromMapPoint(MapPoint startingPoint)
+        private void UpdateUIFromMapPoint(MapPoint selectedPoint)
         {
             // Remove event handlers temporarily
             UtmTextField.TextChanged -= InputTextChanged;
@@ -80,19 +77,47 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             DecimalDegreesTextField.TextChanged -= InputTextChanged;
             UsngTextField.TextChanged -= InputTextChanged;
 
+            try
+            {
+                // Check if the selected point can be formatted into coordinates.
+                CoordinateFormatter.ToLatitudeLongitude(selectedPoint, LatitudeLongitudeFormat.DecimalDegrees, 0);
+            }
+            catch (Exception e)
+            {
+                // Check if the excpetion is because the coordinates are out of range.
+                if (e.Message == "Invalid argument: coordinates are out of range")
+                {
+                    // Set all of the text fields to contain the error message.
+                    DecimalDegreesTextField.Text = "Out of range";
+                    DmsTextField.Text = "Out of range";
+                    UtmTextField.Text = "Out of range";
+                    UsngTextField.Text = "Out of range";
+
+                    // Clear the selectionss symbol.
+                    MyMapView.GraphicsOverlays[0].Graphics.Clear();
+
+                    // Restore event handlers
+                    UtmTextField.TextChanged += InputTextChanged;
+                    DmsTextField.TextChanged += InputTextChanged;
+                    DecimalDegreesTextField.TextChanged += InputTextChanged;
+                    UsngTextField.TextChanged += InputTextChanged;
+                }
+                return;
+            }
+
             // Update the decimal degrees text
             DecimalDegreesTextField.Text =
-                CoordinateFormatter.ToLatitudeLongitude(startingPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
+                CoordinateFormatter.ToLatitudeLongitude(selectedPoint, LatitudeLongitudeFormat.DecimalDegrees, 4);
 
             // Update the degrees, minutes, seconds text
-            DmsTextField.Text = CoordinateFormatter.ToLatitudeLongitude(startingPoint,
+            DmsTextField.Text = CoordinateFormatter.ToLatitudeLongitude(selectedPoint,
                 LatitudeLongitudeFormat.DegreesMinutesSeconds, 1);
 
             // Update the UTM text
-            UtmTextField.Text = CoordinateFormatter.ToUtm(startingPoint, UtmConversionMode.NorthSouthIndicators, true);
+            UtmTextField.Text = CoordinateFormatter.ToUtm(selectedPoint, UtmConversionMode.NorthSouthIndicators, true);
 
             // Update the USNG text
-            UsngTextField.Text = CoordinateFormatter.ToUsng(startingPoint, 4, true);
+            UsngTextField.Text = CoordinateFormatter.ToUsng(selectedPoint, 4, true);
 
             // Clear existing graphics overlays
             MyMapView.GraphicsOverlays[0].Graphics.Clear();
@@ -101,7 +126,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             SimpleMarkerSymbol symbol = new SimpleMarkerSymbol(SimpleMarkerSymbolStyle.X, Colors.Yellow, 20);
 
             // Create the graphic
-            Graphic symbolGraphic = new Graphic(startingPoint, symbol);
+            Graphic symbolGraphic = new Graphic(selectedPoint, symbol);
 
             // Add the graphic to the graphics overlay
             MyMapView.GraphicsOverlays[0].Graphics.Add(symbolGraphic);
@@ -143,7 +168,7 @@ namespace ArcGISRuntimeXamarin.Samples.FormatCoordinates
             catch (Exception ex)
             {
                 // The coordinate is malformed, warn and return
-                DisplayAlert("Invalid Format", ex.Message, "OK");
+                Application.Current.MainPage.DisplayAlert("Invalid Format", ex.Message, "OK");
                 return;
             }
 

@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -7,59 +7,58 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using System.IO;
-using System.Linq;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Mapping;
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using System.Linq;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.OpenMobileMap
+namespace ArcGISRuntime.Samples.OpenMobileMap
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Open mobile map package",
+        category: "Map",
+        description: "Display a map from a mobile map package.",
+        instructions: "When the sample opens, it will automatically display the map in the mobile map package. Pan and zoom to observe the data from the mobile map package.",
+        tags: new[] { "mmpk", "mobile map package", "offline" })]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("e1f3a7254cb845b09450f54937c16061")]
     public partial class OpenMobileMap : ContentPage
     {
         public OpenMobileMap()
         {
             InitializeComponent();
-
-            Title = "Open mobile map (map package)";
-
-            // Create the UI, setup the control references and execute initialization
             Initialize();
         }
 
         private async void Initialize()
         {
-            // Get the path to the mobile map package
+            // Get the path to the mobile map package.
             string filepath = GetMmpkPath();
 
-            // Open the map package
-            MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
-
-            // Check that there is at least one map
-            if (myMapPackage.Maps.Count > 0)
+            try
             {
-                // Display the first map in the package
+                // Open the map package.
+                MobileMapPackage myMapPackage = await MobileMapPackage.OpenAsync(filepath);
+
+                // Load the package.
+                await myMapPackage.LoadAsync();
+
+                // Display the first map in the package.
                 MyMapView.Map = myMapPackage.Maps.First();
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
             }
         }
 
         /// <summary>
-        /// This abstracts away platform & sample viewer-specific code for accessing local files
+        /// This abstracts away platform & sample viewer-specific code for accessing local files.
         /// </summary>
-        /// <returns>String that is the path to the file on disk</returns>
+        /// <returns>String that is the path to the file on disk.</returns>
         private string GetMmpkPath()
         {
-            #region offlinedata
-            // The mobile map package will be downloaded from ArcGIS Online
-            // The desired MMPK is expected to be called Yellowstone.mmpk
-            string filename = "Yellowstone.mmpk";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Return the full path; Item ID is e1f3a7254cb845b09450f54937c16061
-            return Path.Combine(folder, "SampleData", "OpenMobileMap", filename);
-            #endregion offlinedata
+            return DataManager.GetDataFolder("e1f3a7254cb845b09450f54937c16061", "Yellowstone.mmpk");
         }
     }
 }

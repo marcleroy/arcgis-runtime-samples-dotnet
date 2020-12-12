@@ -7,237 +7,148 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
-using ArcGISRuntimeXamarin.Managers;
+using System;
+using ArcGISRuntime.Samples.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using Foundation;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using UIKit;
 
-namespace ArcGISRuntimeXamarin.Samples.ReadShapefileMetadata
+namespace ArcGISRuntime.Samples.ReadShapefileMetadata
 {
     [Register("ReadShapefileMetadata")]
+    [ArcGISRuntime.Samples.Shared.Attributes.OfflineData("d98b3e5293834c5f852f13c569930caa")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Read shapefile metadata",
+        category: "Data",
+        description: "Read a shapefile and display its metadata.",
+        instructions: "The shapefile's metadata will be displayed when you open the sample.",
+        tags: new[] { "credits", "description", "metadata", "package", "shape file", "shapefile", "summary", "symbology", "tags", "visualization" })]
+    [ArcGISRuntime.Samples.Shared.Attributes.ClassFile("MetadataDisplayViewController.cs")]
     public class ReadShapefileMetadata : UIViewController
     {
-        // Create a MapView control to display a map
-        private MapView _myMapView = new MapView();
+        // Hold references to UI controls.
+        private MapView _myMapView;
+        private UIBarButtonItem _showMetadataButton;
 
-        // Store the shapefile metadata
+        // Store the shapefile metadata.
         private ShapefileInfo _shapefileMetadata;
+
+        // Hold a reference to the feature layer.
+        private FeatureLayer _featureLayer;
 
         public ReadShapefileMetadata()
         {
             Title = "Read shapefile metadata";
         }
 
-        public override void ViewDidLoad()
-        {
-            base.ViewDidLoad();
-
-            // Create a layout with a map view and a button to show metadata
-            CreateLayout();
-
-            // Download (if necessary) and add a local shapefile dataset to the map
-            Initialize();
-        }
-
-        public override void ViewDidLayoutSubviews()
-        {
-            base.ViewDidLayoutSubviews();
-
-            // Update the UI to account for new layout
-            _myMapView.Frame = new CoreGraphics.CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
-        }
-
         private async void Initialize()
         {
-            // Create a new map to display in the map view with a streets basemap
+            // Create a new map to display in the map view with a streets basemap.
             Map streetMap = new Map(Basemap.CreateStreetsVector());
 
-            // Get the path to the downloaded shapefile
-            string filepath = await GetShapefilePath();
+            // Get the path to the downloaded shapefile.
+            string filepath = DataManager.GetDataFolder("d98b3e5293834c5f852f13c569930caa", "TrailBikeNetwork.shp");
 
-            // Open the shapefile
-            ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
-
-            // Read metadata about the shapefile and display it in the UI
-            _shapefileMetadata = myShapefile.Info;
-
-            // Create a feature layer to display the shapefile
-            FeatureLayer newFeatureLayer = new FeatureLayer(myShapefile);
-
-            // Zoom the map to the extent of the shapefile
-            _myMapView.SpatialReferenceChanged += async (s, e) =>
+            try
             {
-                await _myMapView.SetViewpointGeometryAsync(newFeatureLayer.FullExtent);
-            };
+                // Open the shapefile.
+                ShapefileFeatureTable myShapefile = await ShapefileFeatureTable.OpenAsync(filepath);
 
-            // Add the feature layer to the map
-            streetMap.OperationalLayers.Add(newFeatureLayer);
+                // Read metadata about the shapefile and display it in the UI.
+                _shapefileMetadata = myShapefile.Info;
 
-            // Show the map in the MapView
-            _myMapView.Map = streetMap;
-        }
+                // Create a feature layer to display the shapefile.
+                _featureLayer = new FeatureLayer(myShapefile);
 
-        private async Task<string> GetShapefilePath()
-        {
-            #region offlinedata
-            // The shapefile will be downloaded from ArcGIS Online
-            // The data manager (a component of the sample viewer, *NOT* the runtime
-            //     handles the offline data process
+                // Zoom the map to the extent of the shapefile.
+                _myMapView.SpatialReferenceChanged += MapView_SpatialReferenceChanged;
 
-            // The desired shapefile is expected to be called "TrailBikeNetwork.shp"
-            string filename = "TrailBikeNetwork.shp";
+                // Add the feature layer to the map.
+                streetMap.OperationalLayers.Add(_featureLayer);
 
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "ReadShapefileMetadata", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // Download the shapefile
-                await DataManager.GetData("d98b3e5293834c5f852f13c569930caa", "ReadShapefileMetadata");
+                // Show the map in the MapView.
+                _myMapView.Map = streetMap;
             }
-
-            // Return the path
-            return filepath;
-            #endregion offlinedata
+            catch (Exception e)
+            {
+                new UIAlertView("Error", e.ToString(), (IUIAlertViewDelegate) null, "OK", null).Show();
+            }
         }
 
-        private void CreateLayout()
+        private async void MapView_SpatialReferenceChanged(object sender, EventArgs e)
         {
-            // Add MapView to the page
-            View.AddSubview(_myMapView);
+            // Unsubscribe from event.
+            _myMapView.SpatialReferenceChanged -= MapView_SpatialReferenceChanged;
 
-            // Add a button at the bottom to show metadata dialog
-            UIButton metadataButton = new UIButton(UIButtonType.Custom)
-            {
-                Frame = new CoreGraphics.CGRect(0, View.Bounds.Height - 40, View.Bounds.Width, 40),
-                BackgroundColor = UIColor.White
-            };
-
-            // Create button to show metadata
-            metadataButton.SetTitle("Metadata", UIControlState.Normal);
-            metadataButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            metadataButton.TouchUpInside += OnMetadataButtonTouch;
-
-            // Add MapView to the page
-            View.AddSubviews(_myMapView, metadataButton);
+            // Set the viewpoint.
+            await _myMapView.SetViewpointGeometryAsync(_featureLayer.FullExtent);
         }
 
         private void OnMetadataButtonTouch(object sender, EventArgs e)
         {
-            // Create a dialog to show metadata values that covers the entire view
-            CoreGraphics.CGRect ovBounds = new CoreGraphics.CGRect(0, 60, View.Bounds.Width, View.Bounds.Height);
-            ShapefileMetadataDialog metadataDialog = new ShapefileMetadataDialog(ovBounds, 0.05f, UIColor.White, _shapefileMetadata);
-
-            // Add the dialog (will show on top of the map view)
-            View.Add(metadataDialog);
-
-            // Action to decrease the view transparency (will be 100% opaque)
-            Action makeOpaqueAction = () => metadataDialog.Alpha = 1.0f;
-
-            // Animate opacity to 100% in one second
-            UIView.Animate(1.00, makeOpaqueAction, null);
-        }
-    }
-
-    // View to display shapefile metadata info
-    public class ShapefileMetadataDialog : UIView
-    {
-        // ImageView to display the shapefile thumbnail
-        private UIImageView _shapefileThumbnailImage;
-
-        public ShapefileMetadataDialog(CoreGraphics.CGRect frame, nfloat opacity, UIColor color, ShapefileInfo metadata) : base(frame)
-        {
-            // Create a semi-transparent overlay with the specified background color
-            BackgroundColor = color;
-            Alpha = opacity;
-            
-            // Variables for space between controls and for control width (height will vary)
-            nfloat rowSpace = 5;
-            nfloat controlWidth = Frame.Width - 20;
-
-            // Find the center x and y of the view
-            nfloat centerX = Frame.Width / 2;
-            nfloat centerY = Frame.Height / 2;
-
-            // Find the start x and y for the control layout
-            nfloat controlX = centerX - (controlWidth / 2);
-            nfloat controlY = 20;
-
-            // Label for credits metadata
-            UILabel creditsLabel = new UILabel(new CoreGraphics.CGRect(controlX, controlY, controlWidth, 20));
-            creditsLabel.Text = metadata.Credits;
-            creditsLabel.TextColor = UIColor.Blue;
-
-            // Adjust the Y position for the next control
-            controlY = controlY + 20 + rowSpace;
-
-            // Label for the summary metadata
-            UILabel summaryLabel = new UILabel(new CoreGraphics.CGRect(controlX, controlY, controlWidth, 120));
-            summaryLabel.LineBreakMode = UILineBreakMode.WordWrap;
-            summaryLabel.Lines = 0;
-            summaryLabel.Text = metadata.Summary;
-
-            // Adjust the Y position for the next control
-            controlY = controlY + 120 + rowSpace;
-
-            // ImageView for metadata thumbnail
-            _shapefileThumbnailImage = new UIImageView(new CoreGraphics.CGRect(centerX-80, controlY, 160, 160));
-            LoadThumbnail(metadata);
-
-            // Adjust the Y position for the next control
-            controlY = controlY + 160 + rowSpace;
-
-            // Metadata tags
-            UILabel tagsLabel = new UILabel(new CoreGraphics.CGRect(controlX, controlY, controlWidth, 100));
-            tagsLabel.LineBreakMode = UILineBreakMode.WordWrap;
-            tagsLabel.Lines = 0;
-            tagsLabel.Text = string.Join(",", metadata.Tags);
-
-            // Adjust the Y position for the next control
-            controlY = controlY + 100 + rowSpace;
-
-            // Button to hide the dialog
-            UIButton hideButton = new UIButton(new CoreGraphics.CGRect(controlX, controlY, controlWidth, 20));
-            hideButton.SetTitle("OK", UIControlState.Normal);
-            hideButton.SetTitleColor(UIColor.Blue, UIControlState.Normal);
-            hideButton.TouchUpInside += (s, e) => { Hide(); };
-
-            // Add the controls
-            AddSubviews(creditsLabel, summaryLabel, _shapefileThumbnailImage, tagsLabel, hideButton);
+            NavigationController.PushViewController(
+                new MetadataDisplayViewController(_shapefileMetadata), true);
         }
 
-        private async void LoadThumbnail(ShapefileInfo metadata)
+        public override void ViewDidLoad()
         {
-            // Asynchronously get the thumbnail image from the metadata
-            UIImage thumbnailImage = await Esri.ArcGISRuntime.UI.RuntimeImageExtensions.ToImageSourceAsync(metadata.Thumbnail);
-
-            // Show the image in the UI
-            _shapefileThumbnailImage.Image = thumbnailImage;
+            base.ViewDidLoad();
+            Initialize();
         }
 
-        // Animate increasing transparency to completely hide the view, then remove it
-        public void Hide()
+        public override void LoadView()
         {
-            // Action to make the view transparent
-            Action makeTransparentAction = () => Alpha = 0;
+            // Create the views.
+            View = new UIView() { BackgroundColor = ApplicationTheme.BackgroundColor };
 
-            // Action to remove the view
-            Action removeViewAction = () => RemoveFromSuperview();
+            _myMapView = new MapView();
+            _myMapView.TranslatesAutoresizingMaskIntoConstraints = false;
 
-            // Time to complete the animation (seconds)
-            double secondsToComplete = 0.75;
+            _showMetadataButton = new UIBarButtonItem();
+            _showMetadataButton.Title = "See metadata";
 
-            // Animate transparency to zero, then remove the view
-            Animate(secondsToComplete, makeTransparentAction, removeViewAction);
+            UIToolbar toolbar = new UIToolbar();
+            toolbar.TranslatesAutoresizingMaskIntoConstraints = false;
+            toolbar.Items = new[]
+            {
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace),
+                _showMetadataButton,
+                new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace)
+            };
+
+            // Add the views.
+            View.AddSubviews(_myMapView, toolbar);
+
+            // Lay out the views.
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                _myMapView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
+                _myMapView.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                _myMapView.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+                _myMapView.BottomAnchor.ConstraintEqualTo(toolbar.TopAnchor),
+
+                toolbar.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor),
+                toolbar.LeadingAnchor.ConstraintEqualTo(View.LeadingAnchor),
+                toolbar.TrailingAnchor.ConstraintEqualTo(View.TrailingAnchor),
+            });
+        }
+
+        public override void ViewWillAppear(bool animated)
+        {
+            base.ViewWillAppear(animated);
+
+            // Subscribe to events.
+            _showMetadataButton.Clicked += OnMetadataButtonTouch;
+        }
+
+        public override void ViewDidDisappear(bool animated)
+        {
+            base.ViewDidDisappear(animated);
+
+            // Unsubscribe from events, per best practice.
+            _showMetadataButton.Clicked -= OnMetadataButtonTouch;
         }
     }
 }

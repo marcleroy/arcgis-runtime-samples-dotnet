@@ -1,4 +1,4 @@
-﻿// Copyright 2017 Esri.
+// Copyright 2017 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -12,15 +12,16 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using System;
 using Xamarin.Forms;
-
-#if WINDOWS_UWP
-using Colors = Windows.UI.Colors;
-#else
 using Colors = System.Drawing.Color;
-#endif
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
+namespace ArcGISRuntime.Samples.FeatureLayerTimeOffset
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer time offset",
+        category: "MapView",
+        description: "Display a time-enabled feature layer with a time offset.",
+        instructions: "When the sample loads, you'll see hurricane tracks visualized in red and blue. The red hurricane tracks occurred 10 days before the tracks displayed in blue. Adjust the slider to move the interval to visualize how storms progress over time.",
+        tags: new[] { "change", "range", "time", "time extent", "time offset", "time-aware", "time-enabled" })]
     public partial class FeatureLayerTimeOffset : ContentPage
     {
         private Uri _featureLayerUri = new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Hurricanes/MapServer/0");
@@ -31,8 +32,6 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
         public FeatureLayerTimeOffset()
         {
             InitializeComponent();
-
-            Title = "Feature layer time offset";
 
             // Create the UI, setup the control references and execute initialization
             Initialize();
@@ -69,14 +68,21 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             // Apply the Map to the MapView
             MyMapView.Map = myMap;
 
-            // Ensure the no offset layer is loaded
-            await noOffsetLayer.LoadAsync();
+            try
+            {
+                // Ensure the no offset layer is loaded
+                await noOffsetLayer.LoadAsync();
 
-            // Store a reference to the original time extent
-            _originalExtent = noOffsetLayer.FullTimeExtent;
+                // Store a reference to the original time extent
+                _originalExtent = noOffsetLayer.FullTimeExtent;
 
-            // Update the time extent set on the map
-            UpdateTimeExtent();
+                // Update the time extent set on the map
+                UpdateTimeExtent();
+            }
+            catch (Exception e)
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", e.ToString(), "OK");
+            }
         }
 
         private void MyTimeSlider_ValueChanged(object sender, ValueChangedEventArgs e)
@@ -121,7 +127,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerTimeOffset
             MyMapView.TimeExtent = new TimeExtent(newStart, newEnd);
 
             // Update the label
-            lblCurrentDate.Text = String.Format("{0} - {1}", newStart.ToString("d"), newEnd.ToString("d"));
+            lblCurrentDate.Text = $"{newStart:d} - {newEnd:d}";
         }
     }
 }

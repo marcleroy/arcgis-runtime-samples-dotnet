@@ -1,4 +1,4 @@
-﻿// Copyright 2016 Esri.
+// Copyright 2016 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
@@ -11,15 +11,19 @@ using Esri.ArcGISRuntime;
 using Esri.ArcGISRuntime.Mapping;
 using Xamarin.Forms;
 
-namespace ArcGISRuntimeXamarin.Samples.AccessLoadStatus
+namespace ArcGISRuntime.Samples.AccessLoadStatus
 {
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Access load status",
+        category: "Map",
+        description: "Determine the map's load status which can be: `NotLoaded`, `FailedToLoad`, `Loading`, `Loaded`.",
+        instructions: "The load status of the map will be displayed as the sample loads.",
+        tags: new[] { "LoadStatus", "Loadable pattern", "Map" })]
     public partial class AccessLoadStatus : ContentPage
     {
         public AccessLoadStatus()
         {
             InitializeComponent ();
-
-            Title = "Access load status";
 
             // Create the UI, setup the control references and execute initialization 
             Initialize();
@@ -43,9 +47,7 @@ namespace ArcGISRuntimeXamarin.Samples.AccessLoadStatus
             Device.BeginInvokeOnMainThread(() =>
             {
                 // Update the load status information
-                loadStatusLabel.Text = string.Format(
-                        "Map's load status : {0}",
-                        e.Status.ToString());
+                loadStatusLabel.Text = $"Map's load status : {e.Status}";
             });
         }
     }

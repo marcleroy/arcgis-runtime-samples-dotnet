@@ -15,13 +15,19 @@ using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.SetMapSpatialReference
+namespace ArcGISRuntime.Samples.SetMapSpatialReference
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Map spatial reference",
+        category: "Map",
+        description: "Specify a map's spatial reference.",
+        instructions: "Pan and zoom around the map. Observe how the map is displayed using the World Bonne spatial reference.",
+        tags: new[] { "SpatialReference", "WKID", "project" })]
     public class SetMapSpatialReference : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -42,7 +48,7 @@ namespace ArcGISRuntimeXamarin.Samples.SetMapSpatialReference
             // Note: Some layer such as tiled layer cannot re-project and will fail to draw if their spatial 
             // reference is not the same as the map's spatial reference
             ArcGISMapImageLayer operationalLayer = new ArcGISMapImageLayer(new Uri(
-                "http://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer"));
+                "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer"));
 
             // Add operational layer to the Map
             myMap.OperationalLayers.Add(operationalLayer);
@@ -54,9 +60,10 @@ namespace ArcGISRuntimeXamarin.Samples.SetMapSpatialReference
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app

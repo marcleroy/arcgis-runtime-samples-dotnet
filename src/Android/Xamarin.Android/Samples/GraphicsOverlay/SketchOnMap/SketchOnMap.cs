@@ -1,10 +1,10 @@
-// Copyright 2017 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using Android.App;
@@ -22,14 +22,21 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
-namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
+namespace ArcGISRuntime.Samples.SketchOnMap
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Sketch on map",
+        category: "GraphicsOverlay",
+        description: "Use the Sketch Editor to edit or sketch a new point, line, or polygon geometry on to a map.",
+        instructions: "Choose which geometry type to sketch from one of the available buttons. Choose from points, multipoints, polylines, polygons, freehand polylines, and freehand polygons.",
+        tags: new[] { "draw", "edit" })]
     public class SketchOnMap : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Dictionary to hold sketch mode enum names and values
         private Dictionary<string, int> _sketchModeDictionary;
@@ -39,6 +46,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
 
         // Buttons for interacting with the SketchEditor
         private Button _editButton;
+
         private Button _undoButton;
         private Button _redoButton;
         private Button _doneButton;
@@ -50,7 +58,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
 
             Title = "Sketch on map";
 
-            // Create the UI 
+            // Create the UI
             CreateLayout();
 
             // Initialize controls, set up event handlers, etc.
@@ -69,12 +77,6 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             // Assign the map to the MapView
             _myMapView.Map = myMap;
 
-            // Set the sketch editor configuration to allow vertex editing, resizing, and moving
-            var config = _myMapView.SketchEditor.EditConfiguration;
-            config.AllowVertexEditing = true;
-            config.ResizeMode = SketchResizeMode.Uniform;
-            config.AllowMove = true;
-
             // Listen to the sketch editor tools CanExecuteChange so controls can be enabled/disabled
             _myMapView.SketchEditor.UndoCommand.CanExecuteChanged += CanExecuteChanged;
             _myMapView.SketchEditor.RedoCommand.CanExecuteChanged += CanExecuteChanged;
@@ -87,39 +89,64 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         private void CreateLayout()
         {
             // Create horizontal layouts for the buttons at the top
-            var buttonLayoutOne = new LinearLayout(this) { Orientation = Orientation.Horizontal };
-            var buttonLayoutTwo = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+            LinearLayout buttonLayoutOne = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+            LinearLayout buttonLayoutTwo = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+
+            // Parameters for all of the buttons. Used to set buttons height and width.
+            LinearLayout.LayoutParams param = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                1.0f
+            );
 
             // Button to sketch a selected geometry type on the map view
-            var sketchButton = new Button(this);
-            sketchButton.Text = "Sketch";
+            Button sketchButton = new Button(this)
+            {
+                Text = "Sketch",
+                LayoutParameters = param
+            };
             sketchButton.Click += OnSketchClicked;
 
             // Button to edit an existing graphic's geometry
-            _editButton = new Button(this);
-            _editButton.Text = "Edit";
+            _editButton = new Button(this)
+            {
+                Text = "Edit",
+                LayoutParameters = param
+            };
             _editButton.Click += OnEditClicked;
             _editButton.Enabled = false;
 
             // Buttons to Undo/Redo sketch and edit operations
-            _undoButton = new Button(this);
-            _undoButton.Text = "Undo";
+            _undoButton = new Button(this)
+            {
+                Text = "Undo",
+                LayoutParameters = param
+            };
             _undoButton.Click += OnUndoClicked;
             _undoButton.Enabled = false;
-            _redoButton = new Button(this);
-            _redoButton.Text = "Redo";
+            _redoButton = new Button(this)
+            {
+                Text = "Redo",
+                LayoutParameters = param
+            };
             _redoButton.Click += OnRedoClicked;
             _redoButton.Enabled = false;
 
             // Button to complete the sketch or edit
-            _doneButton = new Button(this);
-            _doneButton.Text = "Done";
+            _doneButton = new Button(this)
+            {
+                Text = "Done",
+                LayoutParameters = param
+            };
             _doneButton.Click += OnCompleteClicked;
             _doneButton.Enabled = false;
 
             // Button to clear all graphics and sketches
-            _clearButton = new Button(this);
-            _clearButton.Text = "Clear";
+            _clearButton = new Button(this)
+            {
+                Text = "Clear",
+                LayoutParameters = param
+            };
             _clearButton.Click += OnClearClicked;
             _clearButton.Enabled = false;
 
@@ -133,13 +160,14 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             buttonLayoutTwo.AddView(_doneButton);
 
             // Create a new vertical layout for the app (buttons followed by map view)
-            var mainLayout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout mainLayout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Add the button layouts
             mainLayout.AddView(buttonLayoutOne);
             mainLayout.AddView(buttonLayoutTwo);
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             mainLayout.AddView(_myMapView);
 
             // Show the layout in the app
@@ -148,20 +176,20 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
 
         private void OnSketchClicked(object sender, EventArgs e)
         {
-            var sketchButton = sender as Button;
+            Button sketchButton = (Button)sender;
 
             // Create a dictionary of enum names and values
-            var enumValues = Enum.GetValues(typeof(SketchCreationMode)).Cast<int>();
+            IEnumerable<int> enumValues = Enum.GetValues(typeof(SketchCreationMode)).Cast<int>();
             _sketchModeDictionary = enumValues.ToDictionary(v => Enum.GetName(typeof(SketchCreationMode), v), v => v);
 
             // Create a menu to show sketch modes
-            var sketchModesMenu = new PopupMenu(sketchButton.Context, sketchButton);
+            PopupMenu sketchModesMenu = new PopupMenu(sketchButton.Context, sketchButton);
             sketchModesMenu.MenuItemClick += OnSketchModeItemClicked;
 
             // Create a menu option for each basemap type
-            foreach (var mode in _sketchModeDictionary)
+            foreach (string mode in _sketchModeDictionary.Keys)
             {
-                sketchModesMenu.Menu.Add(mode.Key);
+                sketchModesMenu.Menu.Add(mode);
             }
 
             // Show menu in the view
@@ -173,11 +201,11 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             try
             {
                 // Get the title of the selected menu item (sketch mode)
-                var sketchModeName = e.Item.TitleCondensedFormatted.ToString();
+                string sketchModeName = e.Item.TitleCondensedFormatted.ToString();
 
                 // Let the user draw on the map view using the chosen sketch mode
                 SketchCreationMode creationMode = (SketchCreationMode)_sketchModeDictionary[sketchModeName];
-                Esri.ArcGISRuntime.Geometry.Geometry geometry = await _myMapView.SketchEditor.StartAsync(creationMode, true);
+                Geometry geometry = await _myMapView.SketchEditor.StartAsync(creationMode, true);
 
                 // Create and add a graphic from the geometry the user drew
                 Graphic graphic = CreateGraphic(geometry);
@@ -190,7 +218,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                var alertBuilder = new AlertDialog.Builder(this);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                 alertBuilder.SetTitle("Error drawing graphic shape");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();
@@ -206,7 +234,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
                 if (editGraphic == null) { return; }
 
                 // Let the user make changes to the graphic's geometry, await the result (updated geometry)
-                Esri.ArcGISRuntime.Geometry.Geometry newGeometry = await _myMapView.SketchEditor.StartAsync(editGraphic.Geometry);
+                Geometry newGeometry = await _myMapView.SketchEditor.StartAsync(editGraphic.Geometry);
 
                 // Display the updated geometry in the graphic
                 editGraphic.Geometry = newGeometry;
@@ -218,7 +246,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                var alertBuilder = new AlertDialog.Builder(this);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                 alertBuilder.SetTitle("Error editing shape");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();
@@ -275,7 +303,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         private void CanExecuteChanged(object sender, EventArgs e)
         {
             // Enable or disable the corresponding command for the sketch editor
-            var command = sender as System.Windows.Input.ICommand;
+            ICommand command = (ICommand)sender;
             if (command == _myMapView.SketchEditor.UndoCommand)
             {
                 _undoButton.Enabled = command.CanExecute(null);
@@ -291,7 +319,8 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         }
 
         #region Graphic and symbol helpers
-        private Graphic CreateGraphic(Esri.ArcGISRuntime.Geometry.Geometry geometry)
+
+        private Graphic CreateGraphic(Geometry geometry)
         {
             // Create a graphic to display the specified geometry
             Symbol symbol = null;
@@ -304,7 +333,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
                         symbol = new SimpleFillSymbol()
                         {
                             Color = Color.Red,
-                            Style = SimpleFillSymbolStyle.Solid,
+                            Style = SimpleFillSymbolStyle.Solid
                         };
                         break;
                     }
@@ -323,7 +352,6 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
                 case GeometryType.Point:
                 case GeometryType.Multipoint:
                     {
-
                         symbol = new SimpleMarkerSymbol()
                         {
                             Color = Color.Red,
@@ -341,13 +369,13 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
         private async Task<Graphic> GetGraphicAsync()
         {
             // Wait for the user to click a location on the map
-            var mapPoint = (MapPoint)await _myMapView.SketchEditor.StartAsync(SketchCreationMode.Point, false);
+            Geometry mapPoint = await _myMapView.SketchEditor.StartAsync(SketchCreationMode.Point, false);
 
             // Convert the map point to a screen point
-            var screenCoordinate = _myMapView.LocationToScreen(mapPoint);
+            Android.Graphics.PointF screenCoordinate = _myMapView.LocationToScreen((MapPoint)mapPoint);
 
             // Identify graphics in the graphics overlay using the point
-            var results = await _myMapView.IdentifyGraphicsOverlaysAsync(screenCoordinate, 2, false);
+            IReadOnlyList<IdentifyGraphicsOverlayResult> results = await _myMapView.IdentifyGraphicsOverlaysAsync(screenCoordinate, 2, false);
 
             // If results were found, get the first graphic
             Graphic graphic = null;
@@ -360,7 +388,8 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             // Return the graphic (or null if none were found)
             return graphic;
         }
-        #endregion
+
+        #endregion Graphic and symbol helpers
 
         private async void SketchGeometry(string sketchModeName)
         {
@@ -368,7 +397,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             {
                 // Let the user draw on the map view using the chosen sketch mode
                 SketchCreationMode creationMode = (SketchCreationMode)_sketchModeDictionary[sketchModeName];
-                Esri.ArcGISRuntime.Geometry.Geometry geometry = await _myMapView.SketchEditor.StartAsync(creationMode, true);
+                Geometry geometry = await _myMapView.SketchEditor.StartAsync(creationMode, true);
 
                 // Create and add a graphic from the geometry the user drew
                 Graphic graphic = CreateGraphic(geometry);
@@ -381,7 +410,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                var alertBuilder = new AlertDialog.Builder(this);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                 alertBuilder.SetTitle("Error drawing graphic shape");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();
@@ -397,7 +426,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
                 if (editGraphic == null) { return; }
 
                 // Let the user make changes to the graphic's geometry, await the result (updated geometry)
-                Esri.ArcGISRuntime.Geometry.Geometry newGeometry = await _myMapView.SketchEditor.StartAsync(editGraphic.Geometry);
+                Geometry newGeometry = await _myMapView.SketchEditor.StartAsync(editGraphic.Geometry);
 
                 // Display the updated geometry in the graphic
                 editGraphic.Geometry = newGeometry;
@@ -409,7 +438,7 @@ namespace ArcGISRuntimeXamarin.Samples.SketchOnMap
             catch (Exception ex)
             {
                 // Report exceptions
-                var alertBuilder = new AlertDialog.Builder(this);
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                 alertBuilder.SetTitle("Error editing shape");
                 alertBuilder.SetMessage(ex.Message);
                 alertBuilder.Show();

@@ -10,19 +10,25 @@
 using Android.App;
 using Android.OS;
 using Android.Widget;
+using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Rasters;
-using Esri.ArcGISRuntime.ArcGISServices;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
 
-namespace ArcGISRuntimeXamarin.Samples.RasterLayerImageServiceRaster
+namespace ArcGISRuntime.Samples.RasterLayerImageServiceRaster
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Raster layer (service)",
+        category: "Layers",
+        description: "Create a raster layer from a raster image service.",
+        instructions: "Simply launch the sample to see a raster from an image service being used on a map.",
+        tags: new[] { "image service", "raster" })]
     public class RasterLayerImageServiceRaster : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Create and hold reference to the used MapView.
+        private MapView _myMapView;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -30,55 +36,44 @@ namespace ArcGISRuntimeXamarin.Samples.RasterLayerImageServiceRaster
 
             Title = "ArcGIS raster layer (service)";
 
-            // Create the UI, setup the control references and execute initialization 
             CreateLayout();
             Initialize();
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
-            // Create new map with the dark gray canvas basemap
+            // Create new map with the dark gray canvas basemap.
             Map myMap = new Map(Basemap.CreateDarkGrayCanvasVector());
 
-            // Create a Uri to the image service raster
-            var myUri = new Uri("http://sampleserver6.arcgisonline.com/arcgis/rest/services/NLCDLandCover2001/ImageServer");
+            // Create a Uri to the image service raster.
+            Uri myUri = new Uri("https://gis.ngdc.noaa.gov/arcgis/rest/services/bag_hillshades/ImageServer");
 
-            // Create new image service raster from the Uri
+            // Create new image service raster from the Uri.
             ImageServiceRaster myImageServiceRaster = new ImageServiceRaster(myUri);
 
-            // Load the image service raster
-            await myImageServiceRaster.LoadAsync();
-
-            // Get the service information (aka. metadata) about the image service raster
-            ArcGISImageServiceInfo myArcGISImageServiceInfo = myImageServiceRaster.ServiceInfo;
-
-            // Create a new raster layer from the image service raster
+            // Create a new raster layer from the image service raster.
             RasterLayer myRasterLayer = new RasterLayer(myImageServiceRaster);
 
-            // Add the raster layer to the maps layer collection
+            // Add the raster layer to the maps layer collection.
             myMap.Basemap.BaseLayers.Add(myRasterLayer);
 
-            // Assign the map to the map view
+            // Assign the map to the map view.
             _myMapView.Map = myMap;
 
-            // Zoom the map to the extent of the image service raster (which also the extent of the raster layer)
-            await _myMapView.SetViewpointGeometryAsync(myArcGISImageServiceInfo.FullExtent);
-
-            // NOTE: The sample zooms to the extent of the ImageServiceRaster. Currently the ArcGIS Runtime does not 
-            // support zooming a RasterLayer out beyond 4 times it's published level of detail. The sample uses 
-            // MapView.SetViewpointCenterAsync() method to ensure the image shows when the app starts. You can see 
-            // the effect of the image service not showing when you zoom out to the full extent of the image and beyond.        }
+            // zoom in to the San Francisco Bay.
+            _myMapView.SetViewpointCenterAsync(new MapPoint(-13643095.660131, 4550009.846004, SpatialReferences.WebMercator), 100000);
         }
 
         private void CreateLayout()
         {
-            // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            // Create a new vertical layout for the app.
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Add the map view to the layout
+            // Add the map view to the layout.
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
-            // Show the layout in the app
+            // Show the layout in the app.
             SetContentView(layout);
         }
     }

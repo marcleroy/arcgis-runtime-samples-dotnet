@@ -7,25 +7,31 @@
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
+using System;
 using Android.App;
 using Android.OS;
 using Android.Widget;
-using ArcGISRuntimeXamarin.Managers;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Symbology;
 using Esri.ArcGISRuntime.UI.Controls;
-using System.IO;
-using System.Threading.Tasks;
+using ArcGISRuntime.Samples.Managers;
 
-namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
+namespace ArcGISRuntime.Samples.SymbolizeShapefile
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+	[ArcGISRuntime.Samples.Shared.Attributes.OfflineData("d98b3e5293834c5f852f13c569930caa")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Symbolize shapefile",
+        category: "Data",
+        description: "Display a shapefile with custom symbology.",
+        instructions: "Tap the button to apply a new symbology renderer to the feature layer created from the shapefile. ",
+        tags: new[] { "package", "shape file", "shapefile", "symbology", "visualization" })]
     public class SymbolizeShapefile : Activity
     {
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Hold a reference to the map view
+        private MapView _myMapView;
 
         // Hold a reference to the button
         private Button _myRendererButton;
@@ -65,13 +71,10 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             myMap.InitialViewpoint = viewpoint;
 
             // Create a shapefile feature table from the shapefile path
-            ShapefileFeatureTable myFeatureTable = new ShapefileFeatureTable(await GetShapefilePath());
+            ShapefileFeatureTable myFeatureTable = new ShapefileFeatureTable(GetShapefilePath());
 
             // Create a layer from the feature table
             _shapefileFeatureLayer = new FeatureLayer(myFeatureTable);
-
-            // Wait for the layer to load
-            await _shapefileFeatureLayer.LoadAsync();
 
             // Add the layer to the map
             myMap.OperationalLayers.Add(_shapefileFeatureLayer);
@@ -83,20 +86,30 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             // Create the alternate renderer
             _alternateRenderer = new SimpleRenderer(fillSymbol);
 
-            // Hold a reference to the default renderer (to enable switching between the renderers)
-            _defaultRenderer = _shapefileFeatureLayer.Renderer;
+            try
+            {
+                // Wait for the layer to load so that it will be assigned a default renderer
+                await _shapefileFeatureLayer.LoadAsync();
 
-            // Add the map to the mapview
-            _myMapView.Map = myMap;
+                // Hold a reference to the default renderer (to enable switching between the renderers)
+                _defaultRenderer = _shapefileFeatureLayer.Renderer;
 
-            // Enable changing symbology now that sample is loaded
-            _myRendererButton.Enabled = true;
+                // Add the map to the mapview
+                _myMapView.Map = myMap;
+
+                // Enable changing symbology now that sample is loaded
+                _myRendererButton.Enabled = true;
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private void CreateLayout()
         {
             // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
             // Create the button
             _myRendererButton = new Button(this) { Enabled = false, Text = "Change renderer" };
@@ -108,6 +121,7 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             _myRendererButton.Click += _myRendererButton_Click;
 
             // Add the map view to the layout
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
             // Show the layout in the app
@@ -127,28 +141,9 @@ namespace ArcGISRuntimeXamarin.Samples.SymbolizeShapefile
             }
         }
 
-        private async Task<string> GetShapefilePath()
+        private static string GetShapefilePath()
         {
-            #region offlinedata
-
-            // The desired shapefile is expected to be Subdivisions.shp
-            string filename = "Subdivisions.shp";
-
-            // The data manager provides a method to get the folder
-            string folder = DataManager.GetDataFolder();
-
-            // Get the full path
-            string filepath = Path.Combine(folder, "SampleData", "SymbolizeShapefile", filename);
-
-            // Check if the file exists
-            if (!File.Exists(filepath))
-            {
-                // Download the shapefile
-                await DataManager.GetData("d98b3e5293834c5f852f13c569930caa", "SymbolizeShapefile");
-            }
-            return filepath;
-
-            #endregion offlinedata
+            return DataManager.GetDataFolder("d98b3e5293834c5f852f13c569930caa", "Subdivisions.shp");
         }
     }
 }

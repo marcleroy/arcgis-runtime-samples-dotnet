@@ -1,0 +1,34 @@
+{
+    "category": "Map",
+    "description": "Set the map's reference scale and which feature layers should honor the reference scale.",
+    "formal_name": "MapReferenceScale",
+    "ignore": false,
+    "images": [
+        "MapReferenceScale.jpg"
+    ],
+    "keywords": [
+        "map",
+        "reference scale",
+        "scene"
+    ],
+    "nuget_packages": {
+        "Esri.ArcGISRuntime": "100.9.0",
+        "Esri.ArcGISRuntime.UWP": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Android": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.Forms": "100.9.0",
+        "Esri.ArcGISRuntime.Xamarin.iOS": "100.9.0"
+    },
+    "offline_data": [],
+    "redirect_from": [
+        "/net/latest/forms/sample-code/mapreferencescale.htm"
+    ],
+    "relevant_apis": [
+        "FeatureLayer",
+        "Map"
+    ],
+    "snippets": [
+        "MapReferenceScale.xaml",
+        "MapReferenceScale.xaml.cs"
+    ],
+    "title": "Map reference scale"
+}

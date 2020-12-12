@@ -1,16 +1,17 @@
-// Copyright 2016 Esri.
+// Copyright 2018 Esri.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an 
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific 
+// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 // language governing permissions and limitations under the License.
 
 using Android.App;
 using Android.OS;
 using Android.Views;
 using Android.Widget;
+using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.Tasks;
 using Esri.ArcGISRuntime.Tasks.Geoprocessing;
@@ -18,32 +19,36 @@ using Esri.ArcGISRuntime.UI.Controls;
 using System;
 using System.Threading.Tasks;
 
-namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
+namespace ArcGISRuntime.Samples.AnalyzeHotspots
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Analyze hotspots",
+        category: "Geoprocessing",
+        description: "Use a geoprocessing service and a set of features to identify statistically significant hot spots and cold spots.",
+        instructions: "Select a date range (between 1998-01-01 and 1998-05-31) from the dialog and tap on Analyze. The results will be shown on the map upon successful completion of the `GeoprocessingJob`.",
+        tags: new[] { "Geoprocessing", "GeoprocessingJob", "GeoprocessingParameters", "GeoprocessingResult" })]
     public class AnalyzeHotspots : Activity
     {
+        // Hold a reference to the map view.
+        private MapView _myMapView;
 
-        // Create and hold reference to the used MapView
-        private MapView _myMapView = new MapView();
+        // Button to define the start date for the date range.
+        private Button _startDateButton;
 
-        // Progress bar to show when the geoprocessing task is working
-        ProgressBar _myProgressBar;
+        // Button to define the end date for the date range.
+        private Button _endDateButton;
 
-        // Edit text to define the start date for the date range
-        EditText _myEditText_StartDate;
+        // Alert dialog to show when the geoprocessing task is working.
+        private AlertDialog _alert;
 
-        // Edit text to define the end date for the date range
-        EditText _myEditText_EndDate;
+        // Url for the geoprocessing service.
+        private const string _hotspotUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/911CallsHotspot/GPServer/911%20Calls%20Hotspot";
 
-        // Url for the geoprocessing service
-        private const string _hotspotUrl =
-            "https://sampleserver6.arcgisonline.com/arcgis/rest/services/911CallsHotspot/GPServer/911%20Calls%20Hotspot";
-
-        // The geoprocessing task for hot spot analysis 
+        // The geoprocessing task for hot spot analysis.
         private GeoprocessingTask _hotspotTask;
 
-        // The job that handles the communication between the application and the geoprocessing task
+        // The job that handles the communication between the application and the geoprocessing task.
         private GeoprocessingJob _hotspotJob;
 
         protected override void OnCreate(Bundle bundle)
@@ -52,76 +57,95 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
 
             Title = "Analyze Hotspots";
 
-            // Create the UI, setup the control references and execute initialization 
+            // Create the UI, setup the control references and execute initialization .
             CreateLayout();
             Initialize();
         }
 
         private async void Initialize()
         {
-            // Create a map with a topographic basemap
-            Map myMap = new Map(Basemap.CreateTopographic());
+            // Create a map with a topographic basemap.
+            _myMapView.Map = new Map(Basemap.CreateTopographic());
 
-            // Create a new geoprocessing task
-            _hotspotTask = await GeoprocessingTask.CreateAsync(new Uri(_hotspotUrl));
+            try
+            {
+                // Create a new geoprocessing task.
+                _hotspotTask = await GeoprocessingTask.CreateAsync(new Uri(_hotspotUrl));
 
-            // Assign the map to the MapView
-            _myMapView.Map = myMap;
+                // Zoom into Portland, Oregon.
+                await _myMapView.SetViewpointCenterAsync(new MapPoint(-122.66, 45.52, SpatialReferences.Wgs84), 1000000);
+            }
+            catch (Exception e)
+            {
+                new AlertDialog.Builder(this).SetMessage(e.ToString()).SetTitle("Error").Show();
+            }
         }
 
         private async void OnRunAnalysisClicked(object sender, EventArgs e)
         {
-            // Clear any existing results
-            _myMapView.Map.OperationalLayers.Clear();
+            // Get the 'from' and 'to' dates from the date edit text's for the geoprocessing analysis.
+            DateTime myFromDate;
+            DateTime myToDate;
 
-            // Show busy activity indication
-            _myProgressBar.Visibility = ViewStates.Visible;
-
-            // Get the 'from' and 'to' dates from the date edit text's for the geoprocessing analysis
-            DateTime myFromDate = Convert.ToDateTime(_myEditText_StartDate.Text);
-            DateTime myToDate = Convert.ToDateTime(_myEditText_EndDate.Text);
-
-            // The end date must be at least one day after the start date
-            if (myToDate <= myFromDate.AddDays(1))
+            try
             {
-                // Show error message
-                var alertBuilder = new AlertDialog.Builder(this);
-                alertBuilder.SetTitle("Invalid date range");
-                alertBuilder.SetMessage("Please select valid time range.There has to be at least one day in between To and From dates.");
-                alertBuilder.Show();
-
-                // Remove the busy activity indication
-                _myProgressBar.Visibility = ViewStates.Invisible;
+                myFromDate = Convert.ToDateTime(_startDateButton.Text);
+                myToDate = Convert.ToDateTime(_endDateButton.Text);
+            }
+            catch (Exception exception)
+            {
+                // Show error message and quit.
+                new AlertDialog.Builder(this).SetMessage(exception.Message).Show();
                 return;
             }
 
-            // Create the parameters that are passed to the used geoprocessing task
+            // Clear any existing results.
+            _myMapView.Map.OperationalLayers.Clear();
+
+            // Show busy activity indication.
+            _alert.Show();
+
+            // The end date must be at least one day after the start date.
+            if (myToDate <= myFromDate.AddDays(1))
+            {
+                _alert.Cancel();
+
+                // Show error message.
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+                alertBuilder.SetTitle("Invalid date range");
+                alertBuilder.SetMessage("Please select valid time range.There has to be at least one day in between To and From dates.");
+                alertBuilder.Show();
+                return;
+            }
+
+            // Create the parameters that are passed to the used geoprocessing task.
             GeoprocessingParameters myHotspotParameters = new GeoprocessingParameters(GeoprocessingExecutionType.AsynchronousSubmit);
 
-            // Construct the date query
-            var myQueryString = string.Format("(\"DATE\" > date '{0} 00:00:00' AND \"DATE\" < date '{1} 00:00:00')",
-                myFromDate.ToString("yyyy-MM-dd"),
-                myToDate.ToString("yyyy-MM-dd"));
+            // Construct the date query.
+            string myQueryString = $"(\"DATE\" > date '{myFromDate:yyyy-MM-dd} 00:00:00' AND \"DATE\" < date '{myToDate:yyyy-MM-dd} 00:00:00')";
 
-            // Add the query that contains the date range used in the analysis
+            // Add the query that contains the date range used in the analysis.
             myHotspotParameters.Inputs.Add("Query", new GeoprocessingString(myQueryString));
 
-            // Create job that handles the communication between the application and the geoprocessing task
+            // Create job that handles the communication between the application and the geoprocessing task.
             _hotspotJob = _hotspotTask.CreateJob(myHotspotParameters);
             try
             {
-                // Execute the geoprocessing analysis and wait for the results
+                // Execute the geoprocessing analysis and wait for the results.
                 GeoprocessingResult myAnalysisResult = await _hotspotJob.GetResultAsync();
 
-                // Add results to a map using map server from a geoprocessing task
-                // Load to get access to full extent
+                // Add results to a map using map server from a geoprocessing task.
+                // Load to get access to full extent.
                 await myAnalysisResult.MapImageLayer.LoadAsync();
 
-                // Add the analysis layer to the map view
+                // Add the analysis layer to the map view.
                 _myMapView.Map.OperationalLayers.Add(myAnalysisResult.MapImageLayer);
 
-                // Zoom to the results
+                // Zoom to the results.
                 await _myMapView.SetViewpointAsync(new Viewpoint(myAnalysisResult.MapImageLayer.FullExtent));
+
+                // Remove the loading alert dialog.
+                _alert.Cancel();
             }
             catch (TaskCanceledException)
             {
@@ -129,84 +153,164 @@ namespace ArcGISRuntimeXamarin.Samples.AnalyzeHotspots
             }
             catch (Exception ex)
             {
-                // Display error messages if the geoprocessing task fails
+                // Remove the loading alert dialog.
+                _alert.Cancel();
+
+                // Display error messages if the geoprocessing task fails.
                 if (_hotspotJob.Status == JobStatus.Failed && _hotspotJob.Error != null)
                 {
-                    var alertBuilder = new AlertDialog.Builder(this);
+                    AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                     alertBuilder.SetTitle("Geoprocessing error");
                     alertBuilder.SetMessage("Executing geoprocessing failed. " + _hotspotJob.Error.Message);
                     alertBuilder.Show();
                 }
                 else
                 {
-                    var alertBuilder = new AlertDialog.Builder(this);
+                    AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
                     alertBuilder.SetTitle("Sample error");
                     alertBuilder.SetMessage("An error occurred. " + ex.ToString());
                     alertBuilder.Show();
                 }
             }
-            finally
-            {
-                // Remove the busy activity indication
-                _myProgressBar.Visibility = ViewStates.Invisible;
-            }
+        }
+
+        private void OnDateClicked(object sender, EventArgs a)
+        {
+            // Get the date from the button text.
+            DateTime buttonDate = Convert.ToDateTime(((Button)sender).Text);
+
+            // Create a new DatePickerDialog using the date from the button.
+            DatePickerDialog dialog = new DatePickerDialog(this, (EventHandler<DatePickerDialog.DateSetEventArgs>)null, buttonDate.Year, buttonDate.Month - 1, buttonDate.Day);
+
+            // Add an event handler that changes the button text when a date is picked.
+            dialog.DateSet += (s, e) => { ((Button)sender).Text = e.Date.ToShortDateString(); };
+
+            // Display the dialog to the user.
+            dialog.Show();
         }
 
         private void CreateLayout()
         {
-            // Create a new vertical layout for the app
-            var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            // Create a new vertical layout for the app.
+            LinearLayout layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
 
-            // Create a horizontal sub layout for the start date
-            var subLayout1 = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+            LinearLayout.LayoutParams buttonParam = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                1.0f
+            );
+            LinearLayout.LayoutParams labelParam = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                3.0f
+            );
 
-            // Label for the start date
-            var textview_Label1 = new TextView(this);
-            textview_Label1.Text = "Start Date:";
-            subLayout1.AddView(textview_Label1);
+            // Create a horizontal sub layout for the start date.
+            LinearLayout startDateSubLayout = new LinearLayout(this) { Orientation = Orientation.Horizontal };
 
-            // Edit text for the start date (user can change if desired)
-            _myEditText_StartDate = new EditText(this);
-            _myEditText_StartDate.Text = "1/01/98";
-            subLayout1.AddView(_myEditText_StartDate);
+            // Label for the start date.
+            TextView startDateLabel = new TextView(this)
+            {
+                Text = "Start Date:",
+                LayoutParameters = labelParam,
+                Gravity = GravityFlags.Center
+            };
+            startDateSubLayout.AddView(startDateLabel);
 
-            // Add the start date information to the general layout
-            layout.AddView(subLayout1);
+            // Button for the start date.
+            _startDateButton = new Button(this)
+            {
+                Text = "1/01/1998",
+                LayoutParameters = buttonParam
+            };
+            _startDateButton.Click += OnDateClicked;
+            startDateSubLayout.AddView(_startDateButton);
 
-            // Create a horizontal sub layout for the end date
-            var subLayout2 = new LinearLayout(this) { Orientation = Orientation.Horizontal };
+            // Add the start date information to the general layout.
+            layout.AddView(startDateSubLayout);
 
-            // Label for the end date
-            var textview_Label2 = new TextView(this);
-            textview_Label2.Text = "End Date:";
-            subLayout2.AddView(textview_Label2);
+            // Create a horizontal sub layout for the end date.
+            LinearLayout endDateSubLayout = new LinearLayout(this) { Orientation = Orientation.Horizontal };
 
-            // Edit text for the end date (user can change if desired)
-            _myEditText_EndDate = new EditText(this);
-            _myEditText_EndDate.Text = "1/31/98";
-            subLayout2.AddView(_myEditText_EndDate);
+            // Label for the end date.
+            TextView endDateLabel = new TextView(this)
+            {
+                Text = "End Date:",
+                LayoutParameters = labelParam,
+                Gravity = GravityFlags.Center
+            };
 
-            // Add the start date information to the general layout
-            layout.AddView(subLayout2);
+            endDateSubLayout.AddView(endDateLabel);
 
-            // Add a button to the run the hot spot analysis; wire up the click event as well 
-            var mapsButton = new Button(this);
-            mapsButton.Text = "Run Analysis";
+            // Button for the end date.
+            _endDateButton = new Button(this)
+            {
+                Text = "1/31/1998",
+                LayoutParameters = buttonParam
+            };
+            _endDateButton.Click += OnDateClicked;
+            endDateSubLayout.AddView(_endDateButton);
+
+            // Add the start date information to the general layout.
+            layout.AddView(endDateSubLayout);
+
+            // Add a button to the run the hot spot analysis; wire up the click event as well
+            Button mapsButton = new Button(this)
+            {
+                Text = "Run Analysis"
+            };
             mapsButton.Click += OnRunAnalysisClicked;
             layout.AddView(mapsButton);
-           
-            // Add the progress bar to indicate the geoprocessing task is running; make invisible by default
-            _myProgressBar = new ProgressBar(this);
-            _myProgressBar.Indeterminate = true;
-            _myProgressBar.Visibility = ViewStates.Invisible;
-            layout.AddView(_myProgressBar);
 
-            // Add the map view to the layout
+            // Create a layout to be used to alert the user when processing is happening.
+            LinearLayout alertLayout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
+
+            // Create paramaters for the items in the alert layout.
+            LinearLayout.LayoutParams alertParam = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MatchParent,
+                ViewGroup.LayoutParams.MatchParent,
+                1.0f
+            );
+            alertParam.SetMargins(0, 10, 0, 10);
+
+            // Text for the processing alert.
+            TextView processingText = new TextView(this)
+            {
+                Text = "Processing...",
+                LayoutParameters = alertParam,
+                Gravity = GravityFlags.Center,
+            };
+
+            // Add the progress bar to indicate the geoprocessing task is running.
+            ProgressBar progressBar = new ProgressBar(this)
+            {
+                Indeterminate = true,
+                LayoutParameters = alertParam,
+                TextAlignment = TextAlignment.Center
+            };
+
+            // Add the text and progress bar to the Linear Layout.
+            alertLayout.AddView(processingText);
+            alertLayout.AddView(progressBar);
+
+            // Create the alert dialog.
+            _alert = new AlertDialog.Builder(this).Create();
+            _alert.SetCanceledOnTouchOutside(false);
+            _alert.Show();
+            _alert.Cancel();
+
+            // Add the layout to the alert.
+            _alert.AddContentView(alertLayout, buttonParam);
+
+            // Add the map view to the layout.
+            _myMapView = new MapView(this);
             layout.AddView(_myMapView);
 
-            // Show the layout in the app
+            // Show the layout in the app.
             SetContentView(layout);
         }
-
     }
 }

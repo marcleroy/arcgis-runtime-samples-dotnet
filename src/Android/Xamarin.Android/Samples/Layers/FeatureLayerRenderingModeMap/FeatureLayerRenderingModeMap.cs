@@ -9,18 +9,25 @@
 
 using Android.App;
 using Android.OS;
-using Android.Views;
 using Android.Widget;
 using Esri.ArcGISRuntime.Data;
 using Esri.ArcGISRuntime.Geometry;
 using Esri.ArcGISRuntime.Mapping;
 using Esri.ArcGISRuntime.UI.Controls;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeMap
+namespace ArcGISRuntime.Samples.FeatureLayerRenderingModeMap
 {
-    [Activity]
+    [Activity (ConfigurationChanges=Android.Content.PM.ConfigChanges.Orientation | Android.Content.PM.ConfigChanges.ScreenSize)]
+    [ArcGISRuntime.Samples.Shared.Attributes.AndroidLayout("FeatureLayerRenderingModeMapLayout.axml")]
+    [ArcGISRuntime.Samples.Shared.Attributes.Sample(
+        name: "Feature layer rendering mode (map)",
+        category: "Layers",
+        description: "Render features statically or dynamically by setting the feature layer rendering mode.",
+        instructions: "Tap the button to trigger the same zoom animation on both static and dynamic maps.",
+        tags: new[] { "dynamic", "feature layer", "features", "rendering", "static" })]
     public class FeatureLayerRenderingModeMap : Activity
     {
         // Create variables to hold MapView instances  
@@ -35,7 +42,7 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeMap
         {
             base.OnCreate(bundle);
 
-            Title = "Feature Layer Rendering Mode (Map)";
+            Title = "Feature layer rendering mode (Map)";
 
             // Create the UI, setup the control references and execute initialization
             CreateLayout();
@@ -58,41 +65,37 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeMap
             zoomButton.Click += OnZoomClick;
         }
 
-        private async void Initialize()
+        private void Initialize()
         {
             // Set the Map property of both MapViews
             _myMapViewTop.Map = new Map();
             _myMapViewBottom.Map = new Map();
 
-            // Set the top map to render all features in static rendering mode
-            _myMapViewTop.Map.LoadSettings.PreferredPointFeatureRenderingMode = FeatureRenderingMode.Static;
-            _myMapViewTop.Map.LoadSettings.PreferredPolylineFeatureRenderingMode = FeatureRenderingMode.Static;
-            _myMapViewTop.Map.LoadSettings.PreferredPolygonFeatureRenderingMode = FeatureRenderingMode.Static;
-
-            // Set the bottom map to render all features in dynamic rendering mode
-            _myMapViewBottom.Map.LoadSettings.PreferredPointFeatureRenderingMode = FeatureRenderingMode.Dynamic;
-            _myMapViewBottom.Map.LoadSettings.PreferredPolylineFeatureRenderingMode = FeatureRenderingMode.Dynamic;
-            _myMapViewBottom.Map.LoadSettings.PreferredPolygonFeatureRenderingMode = FeatureRenderingMode.Dynamic;
-
             // Create service feature table using a point, polyline, and polygon service.
-            ServiceFeatureTable poinServiceFeatureTable = new ServiceFeatureTable(new Uri("http://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/0"));
-            ServiceFeatureTable polylineServiceFeatureTable = new ServiceFeatureTable(new Uri("http://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/8"));
-            ServiceFeatureTable polygonServiceFeatureTable = new ServiceFeatureTable(new Uri("http://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/9"));
+            ServiceFeatureTable pointServiceFeatureTable = new ServiceFeatureTable(new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/0"));
+            ServiceFeatureTable polylineServiceFeatureTable = new ServiceFeatureTable(new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/8"));
+            ServiceFeatureTable polygonServiceFeatureTable = new ServiceFeatureTable(new Uri("https://sampleserver6.arcgisonline.com/arcgis/rest/services/Energy/Geology/FeatureServer/9"));
 
-            // Create feature layer from service feature tables.
-            FeatureLayer pointFeatureLayer = new FeatureLayer(poinServiceFeatureTable);
-            FeatureLayer polylineFeatureLayer = new FeatureLayer(polylineServiceFeatureTable);
-            FeatureLayer polygonFeatureLayer = new FeatureLayer(polygonServiceFeatureTable);
+            // Create feature layers from service feature tables
+            List<FeatureLayer> featureLayers = new List<FeatureLayer>
+            {
+                new FeatureLayer(polygonServiceFeatureTable),
+                new FeatureLayer(polylineServiceFeatureTable),
+                new FeatureLayer(pointServiceFeatureTable)
+            };
 
-            // Add each layer to top map.
-            _myMapViewTop.Map.OperationalLayers.Add(pointFeatureLayer.Clone());
-            _myMapViewTop.Map.OperationalLayers.Add(polylineFeatureLayer.Clone());
-            _myMapViewTop.Map.OperationalLayers.Add(polygonFeatureLayer.Clone());
+            // Add each layer to the map as a static layer and a dynamic layer
+            foreach (FeatureLayer layer in featureLayers)
+            {
+                // Add the static layer to the top map view
+                layer.RenderingMode = FeatureRenderingMode.Static;
+                _myMapViewTop.Map.OperationalLayers.Add(layer);
 
-            // Add each layer to top map.
-            _myMapViewBottom.Map.OperationalLayers.Add(pointFeatureLayer);
-            _myMapViewBottom.Map.OperationalLayers.Add(polylineFeatureLayer);
-            _myMapViewBottom.Map.OperationalLayers.Add(polygonFeatureLayer);
+                // Add the dynamic layer to the bottom map view
+                FeatureLayer dynamicLayer = (FeatureLayer)layer.Clone();
+                dynamicLayer.RenderingMode = FeatureRenderingMode.Dynamic;
+                _myMapViewBottom.Map.OperationalLayers.Add(dynamicLayer);
+            }
 
             // Set the view point of both MapViews.
             _myMapViewTop.SetViewpoint(_zoomOutPoint);
@@ -101,19 +104,25 @@ namespace ArcGISRuntimeXamarin.Samples.FeatureLayerRenderingModeMap
 
         private async void OnZoomClick(object sender, EventArgs e)
         {
-            // Initiate task to zoom both map views in.  
-            Task t1 = _myMapViewTop.SetViewpointAsync(_zoomInPoint, TimeSpan.FromSeconds(5));
-            Task t2 = _myMapViewBottom.SetViewpointAsync(_zoomInPoint, TimeSpan.FromSeconds(5));
-            await Task.WhenAll(t1, t2);
+            try
+            {
+                // Initiate task to zoom both map views in.  
+                Task t1 = _myMapViewTop.SetViewpointAsync(_zoomInPoint, TimeSpan.FromSeconds(5));
+                Task t2 = _myMapViewBottom.SetViewpointAsync(_zoomInPoint, TimeSpan.FromSeconds(5));
+                await Task.WhenAll(t1, t2);
 
-            // Delay start of next set of zoom tasks.
-            await Task.Delay(2000);
+                // Delay start of next set of zoom tasks.
+                await Task.Delay(2000);
 
-            // Initiate task to zoom both map views out. 
-            Task t3 = _myMapViewTop.SetViewpointAsync(_zoomOutPoint, TimeSpan.FromSeconds(5));
-            Task t4 = _myMapViewBottom.SetViewpointAsync(_zoomOutPoint, TimeSpan.FromSeconds(5));
-            await Task.WhenAll(t3, t4);
-
+                // Initiate task to zoom both map views out. 
+                Task t3 = _myMapViewTop.SetViewpointAsync(_zoomOutPoint, TimeSpan.FromSeconds(5));
+                Task t4 = _myMapViewBottom.SetViewpointAsync(_zoomOutPoint, TimeSpan.FromSeconds(5));
+                await Task.WhenAll(t3, t4);
+            }
+            catch (Exception ex)
+            {
+                new AlertDialog.Builder(this).SetMessage(ex.ToString()).SetTitle("Error").Show();
+            }
         }
     }
 }
