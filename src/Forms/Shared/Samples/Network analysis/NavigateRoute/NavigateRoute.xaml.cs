@@ -71,7 +71,7 @@ namespace ArcGISRuntimeXamarin.Samples.NavigateRoute
             try
             {
                 // Create the map view.
-                MyMapView.Map = new Map(Basemap.CreateStreets());
+                MyMapView.Map = new Map(BasemapStyle.ArcGISStreets);
 
                 // Create the route task, using the online routing service.
                 RouteTask routeTask = await RouteTask.CreateAsync(_routingUri);
@@ -138,7 +138,7 @@ namespace ArcGISRuntimeXamarin.Samples.NavigateRoute
             _directionsList = _route.DirectionManeuvers;
 
             // Create a route tracker.
-            _tracker = new RouteTracker(_routeResult, 0);
+            _tracker = new RouteTracker(_routeResult, 0, true);
             _tracker.NewVoiceGuidance += SpeakDirection;
 
             // Handle route tracking status changes.

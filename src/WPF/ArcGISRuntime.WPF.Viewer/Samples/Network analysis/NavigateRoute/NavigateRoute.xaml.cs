@@ -81,7 +81,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRoute
                 Unloaded += SampleUnloaded;
 
                 // Create the map view.
-                MyMapView.Map = new Map(Basemap.CreateNavigationVector());
+                MyMapView.Map = new Map(BasemapStyle.ArcGISNavigation);
 
                 // Create the route task, using the online routing service.
                 RouteTask routeTask = await RouteTask.CreateAsync(_routingUri);
@@ -148,7 +148,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRoute
             _directionsList = _route.DirectionManeuvers;
 
             // Create a route tracker.
-            _tracker = new RouteTracker(_routeResult, 0);
+            _tracker = new RouteTracker(_routeResult, 0, true);
             _tracker.NewVoiceGuidance += SpeakDirection;
 
             // Handle route tracking status changes.

@@ -24,7 +24,7 @@ namespace ArcGISRuntime.WPF.Samples.SceneSymbols
         tags: new[] { "3D", "cone", "cube", "cylinder", "diamond", "geometry", "graphic", "graphics overlay", "pyramid", "scene", "shape", "sphere", "symbol", "tetrahedron", "tube", "visualization" })]
     public partial class SceneSymbols
     {
-        private readonly string _elevationServiceUrl = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private readonly string _elevationServiceUrl = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         public SceneSymbols()
         {
@@ -35,7 +35,7 @@ namespace ArcGISRuntime.WPF.Samples.SceneSymbols
         private void Initialize()
         {
             // Configure the scene with an imagery basemap.
-            MySceneView.Scene = new Scene(Basemap.CreateImagery());
+            MySceneView.Scene = new Scene(BasemapStyle.ArcGISImageryStandard);
 
             // Add a surface to the scene for elevation.
             ArcGISTiledElevationSource elevationSource = new ArcGISTiledElevationSource(new Uri(_elevationServiceUrl));

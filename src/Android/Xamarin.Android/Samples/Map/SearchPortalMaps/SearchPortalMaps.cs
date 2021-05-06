@@ -80,7 +80,7 @@ namespace ArcGISRuntime.Samples.SearchPortalMaps
         private void Initialize()
         {
             // Create a new Map instance
-            Map myMap = new Map(Basemap.CreateLightGrayCanvas());
+            Map myMap = new Map(BasemapStyle.ArcGISLightGray);
 
             // Provide default Map to the MapView
             _myMapView.Map = myMap;
@@ -347,17 +347,10 @@ namespace ArcGISRuntime.Samples.SearchPortalMaps
         private void UpdateAuthenticationManager()
         {
             // Register the server information with the AuthenticationManager
-            ServerInfo portalServerInfo = new ServerInfo
+            ServerInfo portalServerInfo = new ServerInfo(new Uri(ServerUrl))
             {
-                ServerUri = new Uri(ServerUrl),
-                OAuthClientInfo = new OAuthClientInfo
-                {
-                    ClientId = _appClientId,
-                    RedirectUri = new Uri(_oAuthRedirectUrl)
-                },
-                // Specify OAuthAuthorizationCode if you need a refresh token (and have specified a valid client secret)
-                // Otherwise, use OAuthImplicit
-                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit
+                TokenAuthenticationType = TokenAuthenticationType.OAuthImplicit,
+                OAuthClientInfo = new OAuthClientInfo(_appClientId, new Uri(_oAuthRedirectUrl))
             };
 
             // Get a reference to the (singleton) AuthenticationManager for the app

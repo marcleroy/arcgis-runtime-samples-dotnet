@@ -33,7 +33,7 @@ namespace ArcGISRuntimeXamarin.Samples.TerrainExaggeration
         // Hold a reference to the elevation surface.
         Surface _elevationSurface;
 
-        private readonly string _elevationServiceUrl = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private readonly string _elevationServiceUrl = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         public TerrainExaggeration()
         {
@@ -43,7 +43,7 @@ namespace ArcGISRuntimeXamarin.Samples.TerrainExaggeration
         private void Initialize()
         {
             // Configure the scene with National Geographic basemap.
-            _mySceneView.Scene = new Scene(Basemap.CreateNationalGeographic());
+            _mySceneView.Scene = new Scene(Basemap.CreateTopographic());
 
             // Add the base surface for elevation data.
             _elevationSurface = new Surface();

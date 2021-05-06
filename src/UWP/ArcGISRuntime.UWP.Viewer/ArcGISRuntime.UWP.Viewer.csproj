@@ -117,6 +117,9 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Screenshots -->
+    <Content Include="Samples\Data\EditBranchVersioning\EditBranchVersioning.jpg" />
+    <Content Include="Samples\Layers\ApplyMosaicRule\ApplyMosaicRule.jpg" />
+    <Content Include="Samples\Data\EditFeatureLinkedAnnotation\EditFeatureLinkedAnnotation.jpg" />
     <Content Include="Samples\Layers\ShowPopup\ShowPopup.jpg" />
     <Content Include="Samples\SceneView\AnimateImageOverlay\AnimateImageOverlay.jpg" />
     <Content Include="Samples\Layers\IdentifyRasterCell\IdentifyRasterCell.jpg" />
@@ -376,6 +379,18 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Sample Code -->
+    <Compile Include="Samples\Data\EditBranchVersioning\EditBranchVersioning.xaml.cs">
+      <DependentUpon>EditBranchVersioning.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Samples\Layers\ApplyMosaicRule\ApplyMosaicRule.xaml.cs">
+      <DependentUpon>ApplyMosaicRule.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Samples\Data\EditFeatureLinkedAnnotation\EditFeatureLinkedAnnotation.xaml.cs">
+      <DependentUpon>EditFeatureLinkedAnnotation.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ApiKeyPrompt.xaml.cs">
+      <DependentUpon>ApiKeyPrompt.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Samples\Layers\ShowPopup\ShowPopup.xaml.cs">
       <DependentUpon>ShowPopup.xaml</DependentUpon>
     </Compile>
@@ -959,6 +974,22 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Sample XAML -->
+    <Page Include="Samples\Data\EditBranchVersioning\EditBranchVersioning.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Samples\Layers\ApplyMosaicRule\ApplyMosaicRule.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Samples\Data\EditFeatureLinkedAnnotation\EditFeatureLinkedAnnotation.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ApiKeyPrompt.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Samples\Layers\ShowPopup\ShowPopup.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -1782,28 +1813,31 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Esri.ArcGISRuntime.Hydrography">
-      <Version>100.9.0</Version>
+      <Version>100.11.0</Version>
     </PackageReference>
     <PackageReference Include="Esri.ArcGISRuntime.Toolkit">
-      <Version>100.9.0</Version>
+      <Version>100.11.0</Version>
     </PackageReference>
     <PackageReference Include="Esri.ArcGISRuntime.UWP">
-      <Version>100.9.0</Version>
+      <Version>100.11.0</Version>
     </PackageReference>
     <PackageReference Include="MarkedNet">
       <Version>2.1.4</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
-      <Version>6.2.10</Version>
+      <Version>6.2.12</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Toolkit.Uwp.UI.Controls">
       <Version>6.1.1</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.UI.Xaml">
-      <Version>2.4.3</Version>
+      <Version>2.5.0</Version>
     </PackageReference>
     <PackageReference Include="Monaco.Editor">
       <Version>0.8.1-alpha</Version>
+    </PackageReference>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData">
+      <Version>5.0.0</Version>
     </PackageReference>
   </ItemGroup>
   <!-- Source Code Viewer -->

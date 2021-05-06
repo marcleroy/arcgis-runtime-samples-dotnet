@@ -93,7 +93,7 @@ namespace ArcGISRuntime.Samples.SymbolsFromMobileStyle
         private void Initialize()
         {
             // Create new Map with a topographic basemap.
-            Map myMap = new Map(Basemap.CreateTopographic());
+            Map myMap = new Map(BasemapStyle.ArcGISTopographic);
 
             // Display the map in the map view.
             _myMapView.Map = myMap;
@@ -423,7 +423,7 @@ namespace ArcGISRuntime.Samples.SymbolsFromMobileStyle
                 foreach (SymbolStyleSearchResult result in styleResults)
                 {
                     // Get the result symbol as a multilayer point symbol.
-                    MultilayerPointSymbol multiLayerSym = result.Symbol as MultilayerPointSymbol;
+                    MultilayerPointSymbol multiLayerSym = await result.GetSymbolAsync() as MultilayerPointSymbol;
 
                     // Create a swatch for the symbol and use it to create a bitmap image.
                     RuntimeImage swatch = await multiLayerSym.CreateSwatchAsync();

@@ -22,7 +22,9 @@ using System.Threading.Tasks;
 using System.Windows;
 
 #if !NET_CORE_3
+
 using System.Speech.Synthesis;
+
 #endif
 
 namespace ArcGISRuntime.WPF.Samples.NavigateRouteRerouting
@@ -47,6 +49,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRouteRerouting
         private IReadOnlyList<DirectionManeuver> _directionsList;
 
 #if !NET_CORE_3
+
         // Speech synthesizer to play voice guidance audio.
         private SpeechSynthesizer _speechSynthesizer = new SpeechSynthesizer();
 #endif
@@ -81,7 +84,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRouteRerouting
                 Unloaded += SampleUnloaded;
 
                 // Create the map view.
-                MyMapView.Map = new Map(Basemap.CreateNavigationVector());
+                MyMapView.Map = new Map(BasemapStyle.ArcGISNavigation);
 
                 // Create the route task, using the routing service.
                 _routeTask = await RouteTask.CreateAsync(_networkGeodatabasePath, "Streets_ND");
@@ -146,7 +149,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRouteRerouting
             _directionsList = _route.DirectionManeuvers;
 
             // Create a route tracker.
-            _tracker = new RouteTracker(_routeResult, 0);
+            _tracker = new RouteTracker(_routeResult, 0, true);
             _tracker.NewVoiceGuidance += SpeakDirection;
 
             // Handle route tracking status changes.
@@ -156,7 +159,7 @@ namespace ArcGISRuntime.WPF.Samples.NavigateRouteRerouting
             if (_routeTask.RouteTaskInfo.SupportsRerouting)
             {
                 // Enable automatic re-routing.
-                await _tracker.EnableReroutingAsync(_routeTask, _routeParams, ReroutingStrategy.ToNextWaypoint, false);
+                await _tracker.EnableReroutingAsync(new ReroutingParameters(_routeTask, _routeParams) { Strategy = ReroutingStrategy.ToNextWaypoint, VisitFirstStopOnStart = false });
 
                 // Handle re-routing completion to display updated route graphic and report new status.
                 _tracker.RerouteStarted += RerouteStarted;

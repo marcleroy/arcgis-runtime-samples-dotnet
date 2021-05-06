@@ -30,7 +30,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeAtmosphereEffect
         private SceneView _mySceneView;
         private UISegmentedControl _atmosphereEffectPicker;
 
-        private readonly string _elevationServiceUrl = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private readonly string _elevationServiceUrl = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         public ChangeAtmosphereEffect()
         {
@@ -40,7 +40,7 @@ namespace ArcGISRuntimeXamarin.Samples.ChangeAtmosphereEffect
         private void Initialize()
         {
             // Create the scene with a basemap.
-            _mySceneView.Scene = new Scene(Basemap.CreateImagery());
+            _mySceneView.Scene = new Scene(BasemapStyle.ArcGISImageryStandard);
 
             // Add an elevation source to the scene.
             Surface elevationSurface = new Surface();

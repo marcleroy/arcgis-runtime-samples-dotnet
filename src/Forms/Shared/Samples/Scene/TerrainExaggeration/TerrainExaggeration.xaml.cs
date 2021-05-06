@@ -22,7 +22,7 @@ namespace ArcGISRuntimeXamarin.Samples.TerrainExaggeration
         tags: new[] { "3D", "DEM", "DTM", "elevation", "scene", "surface", "terrain" })]
     public partial class TerrainExaggeration : ContentPage
     {
-        private readonly string _elevationServiceUrl = "http://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
+        private readonly string _elevationServiceUrl = "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer";
 
         public TerrainExaggeration()
         {
@@ -33,7 +33,7 @@ namespace ArcGISRuntimeXamarin.Samples.TerrainExaggeration
         private void Initialize()
         {
             // Configure the scene with National Geographic basemap.
-            MySceneView.Scene = new Scene(Basemap.CreateNationalGeographic());
+            MySceneView.Scene = new Scene(Basemap.CreateTopographic());
 
             // Add the base surface for elevation data.
             Surface elevationSurface = new Surface();

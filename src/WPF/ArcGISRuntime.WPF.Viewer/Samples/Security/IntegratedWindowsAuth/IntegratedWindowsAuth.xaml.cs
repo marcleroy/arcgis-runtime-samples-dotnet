@@ -32,7 +32,7 @@ namespace ArcGISRuntime.WPF.Samples.IntegratedWindowsAuth
     public partial class IntegratedWindowsAuth
     {
         // The ArcGIS Online URL for searching public web maps.
-        private string _publicPortalUrl = "http://www.arcgis.com";
+        private string _publicPortalUrl = "https://www.arcgis.com";
 
         // The public and secured portals.
         ArcGISPortal _iwaSecuredPortal = null;
@@ -108,7 +108,7 @@ namespace ArcGISRuntime.WPF.Samples.IntegratedWindowsAuth
             AuthenticationManager.Current.AddCredential(credential);
 
             // Return the credential.
-            return credential;
+            return await Task.FromResult(credential);
         }
 
         // Search the public portal for web maps and display the results in a list.

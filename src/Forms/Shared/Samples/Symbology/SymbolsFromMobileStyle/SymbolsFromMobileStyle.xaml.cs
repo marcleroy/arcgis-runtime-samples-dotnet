@@ -51,7 +51,7 @@ namespace ArcGISRuntime.Samples.SymbolsFromMobileStyle
             SelectSymbolGrid.IsVisible = false;
 
             // Create a new topographic basemap and assign it to the map view.
-            Map map = new Map(Basemap.CreateTopographic());
+            Map map = new Map(BasemapStyle.ArcGISTopographic);
             MyMapView.Map = map;
 
             // Create a graphics overlay for showing point graphics and add it to the map view.
@@ -103,7 +103,7 @@ namespace ArcGISRuntime.Samples.SymbolsFromMobileStyle
                 foreach (SymbolStyleSearchResult result in styleResults)
                 {
                     // Get the symbol for this result.
-                    MultilayerPointSymbol multiLayerSym = result.Symbol as MultilayerPointSymbol;
+                    MultilayerPointSymbol multiLayerSym = await result.GetSymbolAsync() as MultilayerPointSymbol;
 
                     // Create a swatch image from the symbol.
                     RuntimeImage swatch = await multiLayerSym.CreateSwatchAsync(30, 30, 96, Color.White);

@@ -26,9 +26,9 @@ namespace ArcGISRuntimeXamarin.Samples.ManageOperationalLayers
         // Some URLs of layers to add to the map.
         private readonly string[] _layerUrls = new[]
         {
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer",
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer",
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/DamageAssessment/MapServer"
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer",
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/DamageAssessment/MapServer"
         };
 
         public ManageOperationalLayers()
@@ -40,7 +40,7 @@ namespace ArcGISRuntimeXamarin.Samples.ManageOperationalLayers
         private void Initialize()
         {
             // Set up the view model and bindings.
-            _viewModel = new MapViewModel(new Map(Basemap.CreateStreets()));
+            _viewModel = new MapViewModel(new Map(BasemapStyle.ArcGISStreets));
             MyMapView.Map = _viewModel.Map;
             IncludedListView.ItemsSource = _viewModel.IncludedLayers;
             ExcludedListView.ItemsSource = _viewModel.ExcludedLayers;

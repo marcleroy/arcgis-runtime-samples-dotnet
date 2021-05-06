@@ -33,9 +33,9 @@ namespace ArcGISRuntime.WPF.Samples.ManageOperationalLayers
         // Some URLs of layers to add to the map.
         private readonly string[] _layerUrls = new[]
         {
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer",
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer",
-            "http://sampleserver5.arcgisonline.com/arcgis/rest/services/DamageAssessment/MapServer"
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Elevation/WorldElevations/MapServer",
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+            "https://sampleserver5.arcgisonline.com/arcgis/rest/services/DamageAssessment/MapServer"
         };
 
         public ManageOperationalLayers()
@@ -46,7 +46,7 @@ namespace ArcGISRuntime.WPF.Samples.ManageOperationalLayers
 
         private void Initialize()
         {
-            _viewModel = new MapViewModel(new Map(Basemap.CreateStreets()));
+            _viewModel = new MapViewModel(new Map(BasemapStyle.ArcGISStreets));
 
             // Configure bindings to point to the view model.
             this.DataContext = _viewModel;
